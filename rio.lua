@@ -1,7 +1,21 @@
 -- ====================================================================
 --         Unnamed Enhancements - RÉPLICA EXACTA FUNCIONAL (2026)
 -- ====================================================================
-
+local Aimbot_Enabled = false
+local Silent_Enabled = true
+local FOV_Radius = 110
+local Target_Part = "Head"
+local Rage_Enabled = false
+local Fire_Rate = 15
+local FlySpeed = 100
+local Flying = false
+local VoidSpamming = false
+local InfiniteJumpConnection
+local ESP_Enabled = false
+local Box_Enabled = false
+local Skeleton_Enabled = false
+local Health_Enabled = false
+local ESP_Color = Color3.fromRGB(251, 184, 248)
 -- 1. ENLACES PRINCIPALES EN MODO ANTI-FILTRO (REPARADOS AL 100%)
 local parte_inicio  = "ht" .. "tps" .. "://"
 local parte_git     = "raw" .. ".github" .. "usercontent" .. ".com/"
