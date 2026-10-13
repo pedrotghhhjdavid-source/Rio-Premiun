@@ -1,111 +1,272 @@
--- RIO.WIN PREMIUM GUI SCRIPT (VERSIÓN FINAL COMPLETA)
+-- SERVICIOS DE ROBLOX
+-- =============================================================================
 local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local menuVisible, currentTab, toggleKey, listeningForKey = true, "main", Enum.KeyCode.RightShift, false
-local aimbotEnabled, espEnabled, showFovCircle, aiming = false, false, false, false
-local fovRadius, minFov, maxFov = 150, 30, 500
-
-local FovCircle = Drawing.new("Circle")
-FovCircle.Thickness, FovCircle.Color, FovCircle.Filled, FovCircle.Transparency, FovCircle.NumSides, FovCircle.Visible = 1, Color3.fromRGB(0, 140, 255), false, 0.8, 64, false
-
+-- CONFIGURACIÓN DE LA INTERFAZ (GUI)
+-- =============================================================================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.DisplayOrder, ScreenGui.ResetOnSpawn, ScreenGui.IgnoreGuiInset = 999999, false, true
-pcall(function() ScreenGui.Parent = CoreGui end)
-if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+ScreenGui.Name = "RioPremiumGUI"
+ScreenGui.ResetOnSpawn = false
+-- Un valor muy alto asegura que se renderice por encima de casi todo, incluido el menú de pausa
+ScreenGui.DisplayOrder = 999999999 
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Contenedor Principal (El GUI)
 local MainFrame = Instance.new("Frame")
-MainFrame.Name, MainFrame.Size, MainFrame.Position, MainFrame.BackgroundColor3, MainFrame.BorderColor3, MainFrame.BorderSizePixel, MainFrame.Active, MainFrame.Parent = "RioMainFrame", UDim2.new(0, 520, 0, 360), UDim2.new(0.5, -260, 0.4, -180), Color3.fromRGB(25, 25, 28), Color3.fromRGB(0, 140, 255), 1, true, ScreenGui
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 300, 0, 200)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true -- Permite interactuar con él
+MainFrame.Parent = ScreenGui
 
-local TopBar = Instance.new("Frame")
-TopBar.Size, TopBar.BackgroundTransparency, TopBar.Parent = UDim2.new(1, 0, 0, 45), 1, MainFrame
+local UICorner_Main = Instance.new("UICorner")
+UICorner_Main.CornerRadius = UDim.new(0, 10)
+UICorner_Main.Parent = MainFrame
 
-local LogoLabel = Instance.new("TextLabel")
-LogoLabel.Size, LogoLabel.Position, LogoLabel.BackgroundTransparency, LogoLabel.Text, LogoLabel.TextColor3, LogoLabel.Font, LogoLabel.TextSize, LogoLabel.Parent = UDim2.new(1, 0, 0, 25), UDim2.new(0, 0, 0, 5), 1, "rio.win", Color3.fromRGB(255, 255, 255), Enum.Font.GothamBold, 15, TopBar
+-- Título del Menú
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0, 200, 0, 40)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "Rio Premium"
+Title.TextColor3 = Color3.fromRGB(255, 215, 0) -- Color dorado premium
+Title.TextSize = 18
+Title.Font = Enum.Font.SourceSansBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = MainFrame
 
-local TabContainer = Instance.new("Frame")
-TabContainer.Size, TabContainer.Position, TabContainer.BackgroundTransparency, TabContainer.Parent = UDim2.new(1, 0, 0, 25), UDim2.new(0, 0, 0, 30), 1, TopBar
+-- Botón Cerrar (X)
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 30, 0, 30)
+CloseButton.Position = UDim2.new(1, -35, 0, 5)
+CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 16
+CloseButton.Font = Enum.Font.SourceSansBold
+CloseButton.Parent = MainFrame
 
-local TabListLayout = Instance.new("UIListLayout")
-TabListLayout.FillDirection, TabListLayout.HorizontalAlignment, TabListLayout.SortOrder, TabListLayout.Padding, TabListLayout.Parent = Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center, Enum.SortOrder.LayoutOrder, UDim.new(0, 15), TabContainer
+local UICorner_Close = Instance.new("UICorner")
+UICorner_Close.CornerRadius = UDim.new(1, 0)
+UICorner_Close.Parent = CloseButton
 
-local ContentContainer = Instance.new("Frame")
-ContentContainer.Size, ContentContainer.Position, ContentContainer.BackgroundTransparency, ContentContainer.Parent = UDim2.new(1, -20, 1, -65), UDim2.new(0, 10, 0, 55), 1, MainFrame
+-- Botón Minimizar (-)
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
+MinimizeButton.Position = UDim2.new(1, -70, 0, 5)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+MinimizeButton.Text = "-"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.TextSize = 16
+MinimizeButton.Font = Enum.Font.SourceSansBold
+MinimizeButton.Parent = MainFrame
 
-local MainTabFrame = Instance.new("Frame")
-MainTabFrame.Size, MainTabFrame.BackgroundTransparency, MainTabFrame.Visible, MainTabFrame.Parent = UDim2.new(1, 0, 1, 0), 1, true, ContentContainer
+local UICorner_Min = Instance.new("UICorner")
+UICorner_Min.CornerRadius = UDim.new(1, 0)
+UICorner_Min.Parent = MinimizeButton
 
-local SettingsTabFrame = Instance.new("Frame")
-SettingsTabFrame.Size, SettingsTabFrame.BackgroundTransparency, SettingsTabFrame.Visible, SettingsTabFrame.Parent = UDim2.new(1, 0, 1, 0), 1, false, ContentContainer
+-- Círculo Flotante (Minimizado)
+local FloatingCircle = Instance.new("TextButton")
+FloatingCircle.Name = "FloatingCircle"
+FloatingCircle.Size = UDim2.new(0, 50, 0, 50)
+FloatingCircle.Position = UDim2.new(0.1, 0, 0.1, 0)
+FloatingCircle.BackgroundColor3 = Color3.fromRGB(212, 175, 55) -- Dorado Premium
+FloatingCircle.Text = "RP"
+FloatingCircle.TextColor3 = Color3.fromRGB(30, 30, 30)
+FloatingCircle.TextSize = 16
+FloatingCircle.Font = Enum.Font.SourceSansBold
+FloatingCircle.Visible = false
+FloatingCircle.Active = true
+FloatingCircle.Parent = ScreenGui
 
-local tabs = {"main", "world", "esp", "Visuals", "character", "misc", "settings"}
-for i, tabName in ipairs(tabs) do
-    local TabButton = Instance.new("TextButton")
-    TabButton.Size, TabButton.BackgroundTransparency, TabButton.Text, TabButton.TextColor3, TabButton.Font, TabButton.TextSize, TabButton.LayoutOrder, TabButton.Parent = UDim2.new(0, 65, 1, 0), 1, tabName, (tabName == "main") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 155), Enum.Font.GothamSemibold, 12, i, TabContainer
-    TabButton.MouseButton1Click:Connect(function()
-        currentTab = tabName
-        for _, btn in ipairs(TabContainer:GetChildren()) do if btn:IsA("TextButton") then btn.TextColor3 = (btn.Text == currentTab) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 155) end end
-        MainTabFrame.Visible = (currentTab == "main")
-        SettingsTabFrame.Visible = (currentTab == "settings")
+local UICorner_Circle = Instance.new("UICorner")
+UICorner_Circle.CornerRadius = UDim.new(1, 0)
+UICorner_Circle.Parent = FloatingCircle
+
+-- Botón AIM (Toggle)
+local AimButton = Instance.new("TextButton")
+AimButton.Size = UDim2.new(0, 270, 0, 40)
+AimButton.Position = UDim2.new(0, 15, 0, 60)
+AimButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AimButton.Text = "AIM: OFF"
+AimButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimButton.TextSize = 16
+AimButton.Font = Enum.Font.SourceSansBold
+AimButton.Parent = MainFrame
+
+local UICorner_Aim = Instance.new("UICorner")
+UICorner_Aim.Parent = AimButton
+
+-- Botón ESP Highlight (Toggle)
+local EspButton = Instance.new("TextButton")
+EspButton.Size = UDim2.new(0, 270, 0, 40)
+EspButton.Position = UDim2.new(0, 15, 0, 115)
+EspButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+EspButton.Text = "ESP HIGHLIGHT: OFF"
+EspButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+EspButton.TextSize = 16
+EspButton.Font = Enum.Font.SourceSansBold
+EspButton.Parent = MainFrame
+
+local UICorner_Esp = Instance.new("UICorner")
+UICorner_Esp.Parent = EspButton
+
+
+-- LÓGICA DE ARRASTRE (DRAGGABLE SYSTEM)
+-- =============================================================================
+local function makeDraggable(guiElement)
+    local dragging, dragInput, dragStart, startPos
+
+    guiElement.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = guiElement.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    guiElement.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            guiElement.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
     end)
 end
 
-local LeftColumn = Instance.new("Frame")
-LeftColumn.Size, LeftColumn.BackgroundColor3, LeftColumn.BorderColor3, LeftColumn.Parent = UDim2.new(0.5, -5, 1, 0), Color3.fromRGB(20, 20, 22), Color3.fromRGB(45, 45, 50), MainTabFrame
+makeDraggable(MainFrame)
+makeDraggable(FloatingCircle)
 
-local AimTitle = Instance.new("TextLabel")
-AimTitle.Size, AimTitle.Position, AimTitle.BackgroundTransparency, AimTitle.Text, AimTitle.TextColor3, AimTitle.Font, AimTitle.TextSize, AimTitle.TextXAlignment, AimTitle.Parent = UDim2.new(1, -20, 0, 30), UDim2.new(0, 10, 0, 5), 1, "Aimbot Settings", Color3.fromRGB(0, 140, 255), Enum.Font.GothamBold, 12, Enum.TextXAlignment.Left, LeftColumn
 
-local AimToggleBtn = Instance.new("TextButton")
-AimToggleBtn.Size, AimToggleBtn.Position, AimToggleBtn.BackgroundColor3, AimToggleBtn.BorderColor3, AimToggleBtn.Text, AimToggleBtn.TextColor3, AimToggleBtn.Font, AimToggleBtn.TextSize, AimToggleBtn.TextXAlignment, AimToggleBtn.Parent = UDim2.new(1, -20, 0, 30), UDim2.new(0, 10, 0, 40), Color3.fromRGB(35, 35, 40), Color3.fromRGB(55, 55, 60), "  Activar Aimbot: OFF", Color3.fromRGB(180, 180, 180), Enum.Font.GothamSemibold, 11, Enum.TextXAlignment.Left, LeftColumn
+-- LÓGICA DE VENTANAS (ABRIR, CERRAR, MINIMIZAR)
+-- =============================================================================
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
 
-local FovToggleBtn = Instance.new("TextButton")
-FovToggleBtn.Size, FovToggleBtn.Position, FovToggleBtn.BackgroundColor3, FovToggleBtn.BorderColor3, FovToggleBtn.Text, FovToggleBtn.TextColor3, FovToggleBtn.Font, FovToggleBtn.TextSize, FovToggleBtn.TextXAlignment, FovToggleBtn.Parent = UDim2.new(1, -20, 0, 30), UDim2.new(0, 10, 0, 75), Color3.fromRGB(35, 35, 40), Color3.fromRGB(55, 55, 60), "  Mostrar Circulo FOV: OFF", Color3.fromRGB(180, 180, 180), Enum.Font.GothamSemibold, 11, Enum.TextXAlignment.Left, LeftColumn
+MinimizeButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    FloatingCircle.Position = MainFrame.Position
+    FloatingCircle.Visible = true
+end)
 
-local FovLabel = Instance.new("TextLabel")
-FovLabel.Size, FovLabel.Position, FovLabel.BackgroundTransparency, FovLabel.Text, FovLabel.TextColor3, FovLabel.Font, FovLabel.TextSize, FovLabel.TextXAlignment, FovLabel.Parent = UDim2.new(1, -20, 0, 20), UDim2.new(0, 10, 0, 115), 1, "Tamaño del FOV: 150px", Color3.fromRGB(200, 200, 200), Enum.Font.GothamSemibold, 11, Enum.TextXAlignment.Left, LeftColumn
+FloatingCircle.MouseButton1Click:Connect(function()
+    FloatingCircle.Visible = false
+    MainFrame.Position = FloatingCircle.Position
+    MainFrame.Visible = true
+end)
 
-local FovSliderFrame = Instance.new("Frame")
-FovSliderFrame.Size, FovSliderFrame.Position, FovSliderFrame.BackgroundColor3, FovSliderFrame.BorderSizePixel, FovSliderFrame.Parent = UDim2.new(1, -20, 0, 6), UDim2.new(0, 10, 0, 140), Color3.fromRGB(40, 40, 45), 0, LeftColumn
 
-local FovSliderBar = Instance.new("Frame")
-FovSliderBar.Size, FovSliderBar.BackgroundColor3, FovSliderBar.BorderSizePixel, FovSliderBar.Parent = UDim2.new(0.3, 0, 1, 0), Color3.fromRGB(0, 140, 255), 0, FovSliderFrame
+-- FUNCIONES DEL SCRIPT (AIMBOT Y ESP)
+-- =============================================================================
+local aimbotEnabled = false
+local espEnabled = false
+local holdsRightClick = false
 
-local RightColumn = Instance.new("Frame")
-RightColumn.Size, RightColumn.Position, RightColumn.BackgroundColor3, RightColumn.BorderColor3, RightColumn.Parent = UDim2.new(0.5, -5, 1, 0), UDim2.new(0.5, 5, 0, 0), Color3.fromRGB(20, 20, 22), Color3.fromRGB(45, 45, 50), MainTabFrame
-
-local EspTitle = Instance.new("TextLabel")
-EspTitle.Size, EspTitle.Position, EspTitle.BackgroundTransparency, EspTitle.Text, EspTitle.TextColor3, EspTitle.Font, EspTitle.TextSize, EspTitle.TextXAlignment, EspTitle.Parent = UDim2.new(1, -20, 0, 30), UDim2.new(0, 10, 0, 5), 1, "Visuals Extra", Color3.fromRGB(0, 140, 255), Enum.Font.GothamBold, 12, Enum.TextXAlignment.Left, RightColumn
-
-local EspToggleBtn = Instance.new("TextButton")
-EspToggleBtn.Size, EspToggleBtn.Position, EspToggleBtn.BackgroundColor3, EspToggleBtn.BorderColor3, EspToggleBtn.Text, EspToggleBtn.TextColor3, EspToggleBtn.Font, EspToggleBtn.TextSize, EspToggleBtn.TextXAlignment, EspToggleBtn.Parent = UDim2.new(1, -20, 0, 30), UDim2.new(0, 10, 0, 40), Color3.fromRGB(35, 35, 40), Color3.fromRGB(55, 55, 60), "  Highlight ESP (Rojo): OFF", Color3.fromRGB(180, 180, 180), Enum.Font.GothamSemibold, 11, Enum.TextXAlignment.Left, RightColumn
-
-local SettingsColumn = Instance.new("Frame")
-SettingsColumn.Size, SettingsColumn.BackgroundColor3, SettingsColumn.BorderColor3, SettingsColumn.Parent = UDim2.new(1, 0, 1, 0), Color3.fromRGB(20, 20, 22), Color3.fromRGB(45, 45, 50), SettingsTabFrame
-
-local SettingsTitle = Instance.new("TextLabel")
-SettingsTitle.Size, SettingsTitle.Position, SettingsTitle.BackgroundTransparency, SettingsTitle.Text, SettingsTitle.TextColor3, SettingsTitle.Font, SettingsTitle.TextSize, SettingsTitle.TextXAlignment, SettingsTitle.Parent = UDim2.new(1, -20, 0, 30), UDim2.new(0, 10, 0, 5), 1, "Menu Configuration", Color3.fromRGB(0, 140, 255), Enum.Font.GothamBold, 12, Enum.TextXAlignment.Left, SettingsColumn
-
-local KeybindLabel = Instance.new("TextLabel")
-KeybindLabel.Size, KeybindLabel.Position, KeybindLabel.BackgroundTransparency, KeybindLabel.Text, KeybindLabel.TextColor3, KeybindLabel.Font, KeybindLabel.TextSize, KeybindLabel.TextXAlignment, KeybindLabel.Parent = UDim2.new(1, -20, 0, 25), KeybindLabel.Position = UDim2.new(0, 10, 0, 45), 1, "Abrir / Cerrar Menú Tecla:", Color3.fromRGB(200, 200, 200), Enum.Font.GothamSemibold, 11, Enum.TextXAlignment.Left, SettingsColumn
-
-local KeybindButton = Instance.new("TextButton")
-KeybindButton.Size, KeybindButton.Position, KeybindButton.BackgroundColor3, KeybindButton.BorderColor3, KeybindButton.Text, KeybindButton.TextColor3, KeybindButton.Font, KeybindButton.TextSize, KeybindButton.Parent = UDim2.new(0, 150, 0, 30), UDim2.new(0, 10, 0, 75), Color3.fromRGB(35, 35, 40), Color3.fromRGB(0, 140, 255), "RightShift", Color3.fromRGB(255, 255, 255), Enum.Font.GothamBold, 11, SettingsColumn
-
-AimToggleBtn.MouseButton1Click:Connect(function()
+AimButton.MouseButton1Click:Connect(function()
     aimbotEnabled = not aimbotEnabled
-    AimToggleBtn.Text = aimbotEnabled and "  Activar Aimbot: ON" or "  Activar Aimbot: OFF"
-    AimToggleBtn.TextColor3 = aimbotEnabled and Color3.fromRGB(0, 200, 120) or Color3.fromRGB(180, 180, 180)
+    if aimbotEnabled then
+        AimButton.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
+        AimButton.Text = "AIM: ON"
+    else
+        AimButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        AimButton.Text = "AIM: OFF"
+    end
 end)
 
-FovToggleBtn.MouseButton1Click:Connect(function()
-    showFovCircle = not showFovCircle
-    FovToggleBtn.Text = showFovCircle and "  Mostrar Circulo FOV: ON" or "  Mostrar Circulo FOV: OFF"
-    FovToggleBtn.TextColor3 = showFovCircle and Color3.fromRGB(0, 200, 120) or Color3.fromRGB(180, 180, 180)
+EspButton.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    if espEnabled then
+        EspButton.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
+        EspButton.Text = "ESP HIGHLIGHT: ON"
+    else
+        EspButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        EspButton.Text = "ESP HIGHLIGHT: OFF"
+        for _, player in pairs(Players:GetPlayers()) do
+            if player.Character and player.Character:FindFirstChild("EspHighlight") then
+                player.Character.EspHighlight:Destroy()
+            end
+        end
+    end
 end)
 
-local fovSliderActive = false
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        holdsRightClick = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        holdsRightClick = false
+    end
+end)
+
+local function getClosestEnemy()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChildOfClass("Humanoid") and player.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+            local head = player.Character.Head
+            local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+            
+            if onScreen then
+                local mousePos = UserInputService:GetMouseLocation()
+                local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                
+                if distance < shortestDistance then
+                    closestPlayer = player
+                    shortestDistance = distance
+                end
+            end
+        end
+    end
+    return closestPlayer
+end
+
+RunService.RenderStepped:Connect(function()
+    if aimbotEnabled and holdsRightClick then
+        local target = getClosestEnemy()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.Head.Position)
+        end
+    end
+
+    if espEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChildOfClass("Humanoid") and player.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+                local char = player.Character
+                local highlight = char:FindFirstChild("EspHighlight")
+                
+                if not highlight then
+                    highlight = Instance.new("Highlight")
+                    highlight.Name = "EspHighlight"
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 0
+                    highlight.Adornee = char
+                    highlight.Parent = char
+                end
+            end
+        end
+    else
