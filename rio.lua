@@ -20,7 +20,7 @@ local Health_Enabled = false
 local ESP_Color = Color3.fromRGB(251, 184, 248) -- Tu color rosa por defecto
 
 -- 1. CARGAR MOTOR VISUAL DESDE ESPEJO SEGURO LIBRE DE BLOQUEOS (LÍNEA 27 REPARADA)
-local Fluent = loadstring(game:HttpGet("https://githubusercontent.com"))()
+local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/pedrotghhhjdavid-source/Rio-Premiun/refs/heads/main/rio.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://githubusercontent.com"))()
 local ThemeManager = loadstring(game:HttpGet("https://githubusercontent.com"))()
 
