@@ -13,14 +13,14 @@ local menuKey = Enum.KeyCode.RightShift
 local menuVisible = true
 local bindingMode = false
 
--- ESTADOS DE LAS FUNCIONES EXISTENTES Y NUEVAS
+-- ESTADOS DE LAS FUNCIONES EXISTENTES
 -- =============================================================================
 local silentAimEnabled = false
 local triggerbotEnabled = false
 local espEnabled = false
 local targetEnemy = nil
 
--- CREACIÓN DE INTERFAZ AGRANDADA ESTILO UNNAMED (MÁS ESPACIO PARA EL FUTURO)
+-- CREACIÓN DE INTERFAZ INTEGRAL ESTILO UNNAMED (TEMA: NEGRO Y ROJO)
 -- =============================================================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "RioPremiumGUI"
@@ -28,60 +28,60 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 999999999
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Contenedor Principal Más Amplio (Aumentado a 560x400 para emular perfectamente la UI de tu imagen)
+-- Contenedor Principal (Tamaño real Unnamed, Fondo Negro Oscuro)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 560, 0, 400)
-MainFrame.Position = UDim2.new(0.5, -280, 0.5, -200)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.Size = UDim2.new(0, 560, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -280, 0.5, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15) -- Negro Profundo
 MainFrame.BorderSizePixel = 1
-MainFrame.BorderColor3 = Color3.fromRGB(45, 45, 45)
+MainFrame.BorderColor3 = Color3.fromRGB(35, 35, 35) -- Bordes finos oscuros
 MainFrame.Active = true
 MainFrame.Visible = menuVisible
 MainFrame.Parent = ScreenGui
 
--- Borde superior acentuado en color azul premium
+-- Línea de borde acentuada ROJA en la parte superior (Reemplazo del azul)
 local TopAccent = Instance.new("Frame")
 TopAccent.Size = UDim2.new(1, 0, 0, 2)
-TopAccent.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+TopAccent.BackgroundColor3 = Color3.fromRGB(220, 20, 20) -- Rojo Premium
 TopAccent.BorderSizePixel = 0
 TopAccent.Parent = MainFrame
 
--- Título Principal
+-- Título Principal (Rio Premium dorado como querías conservar)
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 200, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 2)
 Title.BackgroundTransparency = 1
 Title.Text = "Rio Premium"
 Title.TextColor3 = Color3.fromRGB(255, 215, 0)
-Title.TextSize = 16
+Title.TextSize = 15
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
--- Subtítulo lateral
+-- Subtítulo lateral Unnamed Enhancements
 local Subtitle = Instance.new("TextLabel")
 Subtitle.Size = UDim2.new(0, 200, 0, 35)
 Subtitle.Position = UDim2.new(1, -215, 0, 2)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Unnamed Enhancements Style"
-Subtitle.TextColor3 = Color3.fromRGB(120, 120, 120)
-Subtitle.TextSize = 12
+Subtitle.Text = "Unnamed Enhancements - Cracked"
+Subtitle.TextColor3 = Color3.fromRGB(100, 100, 100)
+Subtitle.TextSize = 11
 Subtitle.Font = Enum.Font.Code
 Subtitle.TextXAlignment = Enum.TextXAlignment.Right
 Subtitle.Parent = MainFrame
 
--- SISTEMA DE PESTAÑAS AMPLIADO (TABS BAR)
+-- SISTEMA DE NAVEGACIÓN POR PESTAÑAS (TAB BAR BARRA SUPERIOR)
 -- =============================================================================
 local TabBar = Instance.new("Frame")
-TabBar.Size = UDim2.new(1, -20, 0, 30)
+TabBar.Size = UDim2.new(1, -20, 0, 26)
 TabBar.Position = UDim2.new(0, 10, 0, 40)
-TabBar.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+TabBar.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 TabBar.BorderSizePixel = 1
-TabBar.BorderColor3 = Color3.fromRGB(40, 40, 40)
+TabBar.BorderColor3 = Color3.fromRGB(35, 35, 35)
 TabBar.Parent = MainFrame
 
--- Cuadros contenedores de páginas
+-- Marcos de contenido para las páginas
 local MainTabFrame = Instance.new("Frame")
 MainTabFrame.Size = UDim2.new(1, -20, 1, -85)
 MainTabFrame.Position = UDim2.new(0, 10, 0, 75)
@@ -103,51 +103,54 @@ SettingsTabFrame.BackgroundTransparency = 1
 SettingsTabFrame.Visible = false
 SettingsTabFrame.Parent = MainFrame
 
--- Botones de las Pestañas superiores
+-- Botones del Menú de Pestañas
 local MainTabButton = Instance.new("TextButton")
-MainTabButton.Size = UDim2.new(0, 90, 1, 0)
+MainTabButton.Size = UDim2.new(0, 75, 1, 0)
 MainTabButton.Position = UDim2.new(0, 0, 0, 0)
-MainTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainTabButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainTabButton.Text = "main"
 MainTabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 MainTabButton.Font = Enum.Font.Code
-MainTabButton.TextSize = 14
+MainTabButton.TextSize = 13
+MainTabButton.BorderSizePixel = 0
 MainTabButton.Parent = TabBar
 
 local EspTabButton = Instance.new("TextButton")
-EspTabButton.Size = UDim2.new(0, 90, 1, 0)
-EspTabButton.Position = UDim2.new(0, 95, 0, 0)
-EspTabButton.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+EspTabButton.Size = UDim2.new(0, 75, 1, 0)
+EspTabButton.Position = UDim2.new(0, 76, 0, 0)
+EspTabButton.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 EspTabButton.Text = "esp"
-EspTabButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+EspTabButton.TextColor3 = Color3.fromRGB(140, 140, 140)
 EspTabButton.Font = Enum.Font.Code
-EspTabButton.TextSize = 14
+EspTabButton.TextSize = 13
+EspTabButton.BorderSizePixel = 0
 EspTabButton.Parent = TabBar
 
 local SettingsTabButton = Instance.new("TextButton")
-SettingsTabButton.Size = UDim2.new(0, 90, 1, 0)
-SettingsTabButton.Position = UDim2.new(0, 190, 0, 0)
-SettingsTabButton.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+SettingsTabButton.Size = UDim2.new(0, 75, 1, 0)
+SettingsTabButton.Position = UDim2.new(0, 152, 0, 0)
+SettingsTabButton.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 SettingsTabButton.Text = "settings"
-SettingsTabButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+SettingsTabButton.TextColor3 = Color3.fromRGB(140, 140, 140)
 SettingsTabButton.Font = Enum.Font.Code
-SettingsTabButton.TextSize = 14
+SettingsTabButton.TextSize = 13
+SettingsTabButton.BorderSizePixel = 0
 SettingsTabButton.Parent = TabBar
 
--- Lógica para alternar pestañas
+-- Lógica para intercambiar las páginas
 local function updateTabs(activeButton, activeFrame)
     MainTabFrame.Visible = false
     EspTabFrame.Visible = false
     SettingsTabFrame.Visible = false
-    MainTabButton.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
-    MainTabButton.TextColor3 = Color3.fromRGB(150, 150, 150)
-    EspTabButton.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
-    EspTabButton.TextColor3 = Color3.fromRGB(150, 150, 150)
-    SettingsTabButton.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
-    SettingsTabButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+    MainTabButton.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    MainTabButton.TextColor3 = Color3.fromRGB(140, 140, 140)
+    EspTabButton.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    EspTabButton.TextColor3 = Color3.fromRGB(140, 140, 140)
+    SettingsTabButton.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    SettingsTabButton.TextColor3 = Color3.fromRGB(140, 140, 140)
     
     activeFrame.Visible = true
-    activeButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    activeButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     activeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 end
 
@@ -155,72 +158,177 @@ MainTabButton.MouseButton1Click:Connect(function() updateTabs(MainTabButton, Mai
 EspTabButton.MouseButton1Click:Connect(function() updateTabs(EspTabButton, EspTabFrame) end)
 SettingsTabButton.MouseButton1Click:Connect(function() updateTabs(SettingsTabButton, SettingsTabFrame) end)
 
--- SECCIÓN INTERNA PRINCIPAL (MAIN TAB) - BOTONES DISTRIBUIDOS A LOS EXTREMOS
--- =============================================================================
--- Silent Aim posicionado al extremo izquierdo
-local SilentToggle = Instance.new("TextButton")
-SilentToggle.Size = UDim2.new(0, 240, 0, 35)
-SilentToggle.Position = UDim2.new(0, 15, 0, 20)
-SilentToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-SilentToggle.Text = "Silent Aim: OFF"
-SilentToggle.TextColor3 = Color3.fromRGB(255, 100, 100)
-SilentToggle.Font = Enum.Font.Code
-SilentToggle.TextSize = 14
-SilentToggle.Parent = MainTabFrame
 
--- Triggerbot añadido al extremo derecho (Como se ve en tu imagen del menú)
-local TriggerToggle = Instance.new("TextButton")
-TriggerToggle.Size = UDim2.new(0, 240, 0, 35)
-TriggerToggle.Position = UDim2.new(1, -255, 0, 20) -- Alineado simétricamente a la derecha
-TriggerToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-TriggerToggle.Text = "Triggerbot: OFF"
-TriggerToggle.TextColor3 = Color3.fromRGB(255, 100, 100)
-TriggerToggle.Font = Enum.Font.Code
-TriggerToggle.TextSize = 14
-TriggerToggle.Parent = MainTabFrame
-
--- SECCIÓN ESP (ESP TAB)
+-- DISEÑO DE RECUADROS POR COLUMNAS (MÉTODO UNNAMED EXACTO)
 -- =============================================================================
-local EspToggle = Instance.new("TextButton")
-EspToggle.Size = UDim2.new(0, 240, 0, 35)
-EspToggle.Position = UDim2.new(0, 15, 0, 20)
-EspToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-EspToggle.Text = "ESP Highlight: OFF"
-EspToggle.TextColor3 = Color3.fromRGB(255, 100, 100)
-EspToggle.Font = Enum.Font.Code
-EspToggle.TextSize = 14
-EspToggle.Parent = EspTabFrame
 
--- SECCIÓN CONFIGURACIONES (SETTINGS TAB)
+-- COLUMNA IZQUIERDA: Sección Targeting (Silent Aim)
+local LeftSection = Instance.new("Frame")
+LeftSection.Name = "LeftSection"
+LeftSection.Size = UDim2.new(0, 260, 1, -10)
+LeftSection.Position = UDim2.new(0, 0, 0, 5)
+LeftSection.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+LeftSection.BorderSizePixel = 1
+LeftSection.BorderColor3 = Color3.fromRGB(35, 35, 35)
+LeftSection.Parent = MainTabFrame
+
+local LeftSectionTitle = Instance.new("TextLabel")
+LeftSectionTitle.Size = UDim2.new(1, -10, 0, 25)
+LeftSectionTitle.Position = UDim2.new(0, 8, 0, 2)
+LeftSectionTitle.BackgroundTransparency = 1
+LeftSectionTitle.Text = "targeting"
+LeftSectionTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+LeftSectionTitle.Font = Enum.Font.Code
+LeftSectionTitle.TextSize = 13
+LeftSectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+LeftSectionTitle.Parent = LeftSection
+
+-- Checkbox de Silent Aim (Estilo Linoria funcional)
+local SilentIndicator = Instance.new("Frame")
+SilentIndicator.Size = UDim2.new(0, 12, 0, 12)
+SilentIndicator.Position = UDim2.new(0, 15, 0, 40)
+SilentIndicator.BackgroundColor3 = Color3.fromRGB(40, 15, 15) -- Rojo apagado
+SilentIndicator.BorderSizePixel = 1
+SilentIndicator.BorderColor3 = Color3.fromRGB(80, 20, 20)
+SilentIndicator.Parent = LeftSection
+
+local SilentLabel = Instance.new("TextButton")
+SilentLabel.Size = UDim2.new(1, -40, 0, 20)
+SilentLabel.Position = UDim2.new(0, 35, 0, 36)
+SilentLabel.BackgroundTransparency = 1
+SilentLabel.Text = "Silent Aim"
+SilentLabel.TextColor3 = Color3.fromRGB(160, 160, 160)
+SilentLabel.Font = Enum.Font.Code
+SilentLabel.TextSize = 13
+SilentLabel.TextXAlignment = Enum.TextXAlignment.Left
+SilentLabel.Parent = LeftSection
+
+
+-- COLUMNA DERECHA: Sección Weapons (Triggerbot)
+local RightSection = Instance.new("Frame")
+RightSection.Name = "RightSection"
+RightSection.Size = UDim2.new(0, 260, 1, -10)
+RightSection.Position = UDim2.new(1, -260, 0, 5)
+RightSection.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+RightSection.BorderSizePixel = 1
+RightSection.BorderColor3 = Color3.fromRGB(35, 35, 35)
+RightSection.Parent = MainTabFrame
+
+local RightSectionTitle = Instance.new("TextLabel")
+RightSectionTitle.Size = UDim2.new(1, -10, 0, 25)
+RightSectionTitle.Position = UDim2.new(0, 8, 0, 2)
+RightSectionTitle.BackgroundTransparency = 1
+RightSectionTitle.Text = "weapons"
+RightSectionTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+RightSectionTitle.Font = Enum.Font.Code
+RightSectionTitle.TextSize = 13
+RightSectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+RightSectionTitle.Parent = RightSection
+
+-- Checkbox de Triggerbot (Estilo Linoria funcional al extremo derecho)
+local TriggerIndicator = Instance.new("Frame")
+TriggerIndicator.Size = UDim2.new(0, 12, 0, 12)
+TriggerIndicator.Position = UDim2.new(0, 15, 0, 40)
+TriggerIndicator.BackgroundColor3 = Color3.fromRGB(40, 15, 15)
+TriggerIndicator.BorderSizePixel = 1
+TriggerIndicator.BorderColor3 = Color3.fromRGB(80, 20, 20)
+TriggerIndicator.Parent = RightSection
+
+local TriggerLabel = Instance.new("TextButton")
+TriggerLabel.Size = UDim2.new(1, -40, 0, 20)
+TriggerLabel.Position = UDim2.new(0, 35, 0, 36)
+TriggerLabel.BackgroundTransparency = 1
+TriggerLabel.Text = "Triggerbot"
+TriggerLabel.TextColor3 = Color3.fromRGB(160, 160, 160)
+TriggerLabel.Font = Enum.Font.Code
+TriggerLabel.TextSize = 13
+TriggerLabel.TextXAlignment = Enum.TextXAlignment.Left
+TriggerLabel.Parent = RightSection
+
+
+-- CONFIGURACIÓN PESTAÑA ESP (ESTILO RECUADRO BOX COMPLETO)
 -- =============================================================================
+local EspSection = Instance.new("Frame")
+EspSection.Size = UDim2.new(1, 0, 1, -10)
+EspSection.Position = UDim2.new(0, 0, 0, 5)
+EspSection.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+EspSection.BorderSizePixel = 1
+EspSection.BorderColor3 = Color3.fromRGB(35, 35, 35)
+EspSection.Parent = EspTabFrame
+local EspSectionTitle = Instance.new("TextLabel")
+EspSectionTitle.Size = UDim2.new(1, -10, 0, 25)
+EspSectionTitle.Position = UDim2.new(0, 8, 0, 2)
+EspSectionTitle.BackgroundTransparency = 1
+EspSectionTitle.Text = "visuals & esp"
+EspSectionTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+EspSectionTitle.Font = Enum.Font.Code
+EspSectionTitle.TextSize = 13
+EspSectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+EspSectionTitle.Parent = EspSection
+local EspIndicator = Instance.new("Frame")
+EspIndicator.Size = UDim2.new(0, 12, 0, 12)
+EspIndicator.Position = UDim2.new(0, 15, 0, 40)
+EspIndicator.BackgroundColor3 = Color3.fromRGB(40, 15, 15)
+EspIndicator.BorderSizePixel = 1
+EspIndicator.BorderColor3 = Color3.fromRGB(80, 20, 20)
+EspIndicator.Parent = EspSection
+local EspLabel = Instance.new("TextButton")
+EspLabel.Size = UDim2.new(1, -40, 0, 20)
+EspLabel.Position = UDim2.new(0, 35, 0, 36)
+EspLabel.BackgroundTransparency = 1
+EspLabel.Text = "ESP Highlight"
+EspLabel.TextColor3 = Color3.fromRGB(160, 160, 160)
+EspLabel.Font = Enum.Font.Code
+EspLabel.TextSize = 13
+EspLabel.TextXAlignment = Enum.TextXAlignment.Left
+EspLabel.Parent = EspSection
+-- CONFIGURACIÓN PESTAÑA SETTINGS (RECUADRO KEYBINDS)
+-- =============================================================================
+local SettingsSection = Instance.new("Frame")
+SettingsSection.Size = UDim2.new(1, 0, 1, -10)
+SettingsSection.Position = UDim2.new(0, 0, 0, 5)
+SettingsSection.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+SettingsSection.BorderSizePixel = 1
+SettingsSection.BorderColor3 = Color3.fromRGB(35, 35, 35)
+SettingsSection.Parent = SettingsTabFrame
+local SettingsSectionTitle = Instance.new("TextLabel")
+SettingsSectionTitle.Size = UDim2.new(1, -10, 0, 25)
+SettingsSectionTitle.Position = UDim2.new(0, 8, 0, 2)
+SettingsSectionTitle.BackgroundTransparency = 1
+SettingsSectionTitle.Text = "menu & keybinds"
+SettingsSectionTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+SettingsSectionTitle.Font = Enum.Font.Code
+SettingsSectionTitle.TextSize = 13
+SettingsSectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+SettingsSectionTitle.Parent = SettingsSection
 local KeybindLabel = Instance.new("TextLabel")
 KeybindLabel.Size = UDim2.new(0, 200, 0, 30)
-KeybindLabel.Position = UDim2.new(0, 15, 0, 20)
+KeybindLabel.Position = UDim2.new(0, 15, 0, 40)
 KeybindLabel.BackgroundTransparency = 1
 KeybindLabel.Text = "Menu Key (Toggle):"
-KeybindLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+KeybindLabel.TextColor3 = Color3.fromRGB(160, 160, 160)
 KeybindLabel.Font = Enum.Font.Code
-KeybindLabel.TextSize = 14
+KeybindLabel.TextSize = 13
 KeybindLabel.TextXAlignment = Enum.TextXAlignment.Left
-KeybindLabel.Parent = SettingsTabFrame
-
+KeybindLabel.Parent = SettingsSection
 local KeybindButton = Instance.new("TextButton")
-KeybindButton.Size = UDim2.new(0, 150, 0, 30)
-KeybindButton.Position = UDim2.new(0, 180, 0, 20)
-KeybindButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+KeybindButton.Size = UDim2.new(0, 130, 0, 24)
+KeybindButton.Position = UDim2.new(0, 180, 0, 43)
+KeybindButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+KeybindButton.BorderSizePixel = 1
+KeybindButton.BorderColor3 = Color3.fromRGB(50, 50, 50)
 KeybindButton.Text = "RightShift"
-KeybindButton.TextColor3 = Color3.fromRGB(0, 150, 255)
+KeybindButton.TextColor3 = Color3.fromRGB(220, 20, 20) -- Texto del botón Rojo
 KeybindButton.Font = Enum.Font.Code
-KeybindButton.TextSize = 14
-KeybindButton.Parent = SettingsTabFrame
-
--- INTERFAZ COMPLEMENTARIA (CERRAR Y MINIMIZAR ORIGINALES)
+KeybindButton.TextSize = 13
+KeybindButton.Parent = SettingsSection
+-- ELEMENTOS ADICIONALES REQUERIDOS (MINIMIZAR, CERRAR Y CÍRCULO ORIGINAL)
 -- =============================================================================
 local FloatingCircle = Instance.new("TextButton")
 FloatingCircle.Name = "FloatingCircle"
 FloatingCircle.Size = UDim2.new(0, 50, 0, 50)
 FloatingCircle.Position = UDim2.new(0.1, 0, 0.1, 0)
-FloatingCircle.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+FloatingCircle.BackgroundColor3 = Color3.fromRGB(212, 175, 55) -- Preserva inicial dorado
 FloatingCircle.Text = "RP"
 FloatingCircle.TextColor3 = Color3.fromRGB(30, 30, 30)
 FloatingCircle.TextSize = 16
@@ -228,66 +336,56 @@ FloatingCircle.Font = Enum.Font.SourceSansBold
 FloatingCircle.Visible = false
 FloatingCircle.Active = true
 FloatingCircle.Parent = ScreenGui
-
 local UICorner_Circle = Instance.new("UICorner")
 UICorner_Circle.CornerRadius = UDim.new(1, 0)
 UICorner_Circle.Parent = FloatingCircle
-
 local MinimizeButton = Instance.new("TextButton")
-MinimizeButton.Size = UDim2.new(0, 25, 0, 25)
-MinimizeButton.Position = UDim2.new(1, -65, 0, 5)
-MinimizeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+MinimizeButton.Size = UDim2.new(0, 22, 0, 22)
+MinimizeButton.Position = UDim2.new(1, -60, 0, 6)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MinimizeButton.BorderSizePixel = 1
+MinimizeButton.BorderColor3 = Color3.fromRGB(45, 45, 45)
 MinimizeButton.Text = "-"
-MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.TextColor3 = Color3.fromRGB(200, 200, 200)
 MinimizeButton.Font = Enum.Font.SourceSansBold
-MinimizeButton.TextSize = 14
+MinimizeButton.TextSize = 13
 MinimizeButton.Parent = MainFrame
-
 local CloseButton = Instance.new("TextButton")
-CloseButton.Size = UDim2.new(0, 25, 0, 25)
-CloseButton.Position = UDim2.new(1, -35, 0, 5)
-CloseButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+CloseButton.Size = UDim2.new(0, 22, 0, 22)
+CloseButton.Position = UDim2.new(1, -30, 0, 6)
+CloseButton.BackgroundColor3 = Color3.fromRGB(40, 15, 15) -- Fondo de cierre Rojo Oscuro
+CloseButton.BorderSizePixel = 1
+CloseButton.BorderColor3 = Color3.fromRGB(80, 20, 20)
 CloseButton.Text = "X"
-CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextColor3 = Color3.fromRGB(255, 100, 100)
 CloseButton.Font = Enum.Font.SourceSansBold
-CloseButton.TextSize = 14
+CloseButton.TextSize = 13
 CloseButton.Parent = MainFrame
--- LÓGICA DE INTERACTIVIDAD DE BOTONES TOGGLE
+-- LÓGICA DE INTERRUPTORES ASÍNCROOS (CHECKBOX TOGGLES INTERNOS)
 -- =============================================================================
-SilentToggle.MouseButton1Click:Connect(function()
+local function toggleState(state, indicator, label, textOn, textOff)
+if state then
+indicator.BackgroundColor3 = Color3.fromRGB(220, 20, 20) -- Rojo vivo al encender
+indicator.BorderColor3 = Color3.fromRGB(255, 50, 50)
+label.TextColor3 = Color3.fromRGB(255, 255, 255)
+else
+indicator.BackgroundColor3 = Color3.fromRGB(40, 15, 15) -- Rojo oscuro al apagar
+indicator.BorderColor3 = Color3.fromRGB(80, 20, 20)
+label.TextColor3 = Color3.fromRGB(160, 160, 160)
+end
+end
+SilentLabel.MouseButton1Click:Connect(function()
 silentAimEnabled = not silentAimEnabled
-if silentAimEnabled then
-SilentToggle.BackgroundColor3 = Color3.fromRGB(0, 120, 70)
-SilentToggle.Text = "Silent Aim: ON"
-SilentToggle.TextColor3 = Color3.fromRGB(100, 255, 100)
-else
-SilentToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-SilentToggle.Text = "Silent Aim: OFF"
-SilentToggle.TextColor3 = Color3.fromRGB(255, 100, 100)
-end
+toggleState(silentAimEnabled, SilentIndicator, SilentLabel)
 end)
-TriggerToggle.MouseButton1Click:Connect(function()
+TriggerLabel.MouseButton1Click:Connect(function()
 triggerbotEnabled = not triggerbotEnabled
-if triggerbotEnabled then
-TriggerToggle.BackgroundColor3 = Color3.fromRGB(0, 120, 70)
-TriggerToggle.Text = "Triggerbot: ON"
-TriggerToggle.TextColor3 = Color3.fromRGB(100, 255, 100)
-else
-TriggerToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-TriggerToggle.Text = "Triggerbot: OFF"
-TriggerToggle.TextColor3 = Color3.fromRGB(255, 100, 100)
-end
+toggleState(triggerbotEnabled, TriggerIndicator, TriggerLabel)
 end)
-EspToggle.MouseButton1Click:Connect(function()
+EspLabel.MouseButton1Click:Connect(function()
 espEnabled = not espEnabled
-if espEnabled then
-EspToggle.BackgroundColor3 = Color3.fromRGB(0, 120, 70)
-EspToggle.Text = "ESP Highlight: ON"
-EspToggle.TextColor3 = Color3.fromRGB(100, 255, 100)
-else
-EspToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-EspToggle.Text = "ESP Highlight: OFF"
-EspToggle.TextColor3 = Color3.fromRGB(255, 100, 100)
+toggleState(espEnabled, EspIndicator, EspLabel)
+if not espEnabled then
 for _, player in pairs(Players:GetPlayers()) do
 if player.Character and player.Character:FindFirstChild("EspHighlight") then
 player.Character.EspHighlight:Destroy()
@@ -295,11 +393,12 @@ end
 end
 end
 end)
--- ASIGNACIÓN DE TECLAS DE ACCESO RÁPIDO
+-- ASIGNACIÓN DINÁMICA DE KEYBINDS INTERNA
+-- =============================================================================
 KeybindButton.MouseButton1Click:Connect(function()
 bindingMode = true
-KeybindButton.Text = "[Presiona una tecla]"
-KeybindButton.TextColor3 = Color3.fromRGB(255, 200, 0)
+KeybindButton.Text = "[Key]"
+KeybindButton.TextColor3 = Color3.fromRGB(255, 255, 0)
 end)
 UserInputService.InputBegan:Connect(function(input, processed)
 if bindingMode then
@@ -307,7 +406,7 @@ if input.UserInputType == Enum.UserInputType.Keyboard then
 menuKey = input.KeyCode
 bindingMode = false
 KeybindButton.Text = tostring(input.KeyCode.Name)
-KeybindButton.TextColor3 = Color3.fromRGB(0, 150, 255)
+KeybindButton.TextColor3 = Color3.fromRGB(220, 20, 20)
 end
 return
 end
@@ -318,7 +417,8 @@ MainFrame.Visible = menuVisible
 end
 end
 end)
--- SISTEMA DRAGGABLE DE ARRASTRE
+-- ARRASTRE DE COMPONENTES CON MOUSE (DRAGGABLE)
+-- =============================================================================
 local function makeDraggable(guiElement)
 local dragging, dragInput, dragStart, startPos
 guiElement.InputBegan:Connect(function(input)
@@ -345,7 +445,8 @@ end)
 end
 makeDraggable(MainFrame)
 makeDraggable(FloatingCircle)
--- MANEJO DE VENTANAS (OCULTAR, CERRAR)
+-- CONTROLADORES DE PANTALLA (ABRIR, CERRAR, MINIMIZAR)
+-- =============================================================================
 CloseButton.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 MinimizeButton.MouseButton1Click:Connect(function()
 MainFrame.Visible = false
@@ -357,11 +458,9 @@ FloatingCircle.Visible = false
 MainFrame.Position = FloatingCircle.Position
 MainFrame.Visible = menuVisible
 end)
--- PROCESADOR SEGMENTADO DE JUGADORES ANTI-LAG
-task.spawn(function()
-while true do
-task.wait(0.1)
-if silentAimEnabled or espEnabled then
+-- SCANNER DE OPONENTES SEGURO (ANTI-LAG EN HILO INDEPENDIENTE)
+-- =============================================================================
+local function getClosestEnemy()
 local closestPlayer = nil
 local shortestDistance = math.huge
 local playersList = Players:GetPlayers()
@@ -382,36 +481,45 @@ end
 end
 end
 end
-targetEnemy = closestPlayer
+return closestPlayer
+end
+task.spawn(function()
+while true do
+task.wait(0.1)
+if silentAimEnabled or espEnabled then
+targetEnemy = getClosestEnemy()
 end
 end
 end)
--- LÓGICA CORE: SISTEMA DE TRIGGERBOT AUTOMÁTICO ASÍNCRONO
+-- SCRIPT CORE: CONTROL DE AUTOMATIZACIÓN DE DISPAROS (TRIGGERBOT ANTI-CRASH)
+-- =============================================================================
 task.spawn(function()
 while true do
-RunService.RenderStepped:Wait()
+task.wait(0.02)
 if triggerbotEnabled and Mouse.Target then
+pcall(function()
 local targetObject = Mouse.Target
 local characterModel = targetObject.Parent
 local detectedPlayer = Players:GetPlayerFromCharacter(characterModel) or Players:GetPlayerFromCharacter(characterModel.Parent)
 if detectedPlayer and detectedPlayer ~= LocalPlayer then
 local humanoid = characterModel:FindFirstChildOfClass("Humanoid") or characterModel.Parent:FindFirstChildOfClass("Humanoid")
 if humanoid and humanoid.Health > 0 then
--- Asegura compatibilidad ejecutando clics virtuales según la API de tu inyector
 if mouse1click then
 mouse1click()
-elseif Input then
+else
 UserInputService:SimulateInput(Enum.UserInputType.MouseButton1, Enum.UserInputState.Begin)
 task.wait()
 UserInputService:SimulateInput(Enum.UserInputType.MouseButton1, Enum.UserInputState.End)
 end
-task.wait(0.05) -- Pequeño retraso para emular el tiempo de respuesta humano y evitar bloqueos
-end
-end
+task.wait(0.08)
 end
 end
 end)
--- HOOK DE DISPAROS (SILENT AIM METATABLE)
+end
+end
+end)
+-- HOOK DE REDIRECCIÓN DE BALAS (SILENT AIM METATABLE)
+-- =============================================================================
 local success, err = pcall(function()
 local mt = getrawmetatable(game)
 local oldIndex = mt.__index
@@ -427,10 +535,13 @@ return oldIndex(self, index)
 end)
 setreadonly(mt, true)
 end)
--- ITERACIÓN SÍNCRONA DE RENDERIZADO PARA EL ESP HIGHLIGHT
+-- PROCESAMIENTO RENDERSTEPPED (VISUALIZACIÓN DEL ESP HIGHLIGHT DE ENEMY)
+-- =============================================================================
 RunService.RenderStepped:Connect(function()
 if espEnabled then
-for _, player in pairs(Players:GetPlayers()) do
+local playersList = Players:GetPlayers()
+for i = 1, #playersList do
+local player = playersList[i]
 if player ~= LocalPlayer and player.Character and player.Character:FindFirstChildOfClass("Humanoid") and player.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
 local char = player.Character
 local highlight = char:FindFirstChild("EspHighlight")
@@ -444,13 +555,6 @@ highlight.OutlineTransparency = 0
 highlight.Adornee = char
 highlight.Parent = char
 end
-end
-end
-else
-for _, player in pairs(Players:GetPlayers()) do
-if player.Character then
-local highlight = player.Character:FindFirstChild("EspHighlight")
-if highlight then highlight:Destroy() end
 end
 end
 end
