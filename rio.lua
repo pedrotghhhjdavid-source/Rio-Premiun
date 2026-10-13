@@ -393,7 +393,7 @@ end
 end
 end
 end)
--- ASIGNACIÓN DINÁMICA DE KEYBINDS INTERNA
+-- ASIGNACIÓN DE KEYBINDS INTERNA
 -- =============================================================================
 KeybindButton.MouseButton1Click:Connect(function()
 bindingMode = true
@@ -555,6 +555,13 @@ highlight.OutlineTransparency = 0
 highlight.Adornee = char
 highlight.Parent = char
 end
+end
+end
+else
+for _, player in pairs(Players:GetPlayers()) do
+if player.Character then
+local highlight = player.Character:FindFirstChild("EspHighlight")
+if highlight then highlight:Destroy() end
 end
 end
 end
