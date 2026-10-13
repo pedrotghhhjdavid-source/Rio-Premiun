@@ -13,13 +13,14 @@ local menuKey = Enum.KeyCode.RightShift
 local menuVisible = true
 local bindingMode = false
 
--- ESTADOS DE LAS FUNCIONES EXISTENTES
+-- ESTADOS DE LAS FUNCIONES EXISTENTES Y NUEVAS
 -- =============================================================================
 local silentAimEnabled = false
+local triggerbotEnabled = false
 local espEnabled = false
 local targetEnemy = nil
 
--- CREACIÓN DE INTERFAZ ESTILO UNNAMED (LINORIA/RAYFIELD THEME)
+-- CREACIÓN DE INTERFAZ AGRANDADA ESTILO UNNAMED (MÁS ESPACIO PARA EL FUTURO)
 -- =============================================================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "RioPremiumGUI"
@@ -27,11 +28,11 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 999999999
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Contenedor Principal (Estilo Ventana Oscura)
+-- Contenedor Principal Más Amplio (Aumentado a 560x400 para emular perfectamente la UI de tu imagen)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 480, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -240, 0.5, -180)
+MainFrame.Size = UDim2.new(0, 560, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -280, 0.5, -200)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BorderSizePixel = 1
 MainFrame.BorderColor3 = Color3.fromRGB(45, 45, 45)
@@ -39,7 +40,7 @@ MainFrame.Active = true
 MainFrame.Visible = menuVisible
 MainFrame.Parent = ScreenGui
 
--- Línea de borde acentuada azul/premium típica de Unnamed
+-- Borde superior acentuado en color azul premium
 local TopAccent = Instance.new("Frame")
 TopAccent.Size = UDim2.new(1, 0, 0, 2)
 TopAccent.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
@@ -58,10 +59,10 @@ Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
--- Subtítulo de estado de carga
+-- Subtítulo lateral
 local Subtitle = Instance.new("TextLabel")
-Subtitle.Size = UDim2.new(0, 150, 0, 35)
-Subtitle.Position = UDim2.new(1, -165, 0, 2)
+Subtitle.Size = UDim2.new(0, 200, 0, 35)
+Subtitle.Position = UDim2.new(1, -215, 0, 2)
 Subtitle.BackgroundTransparency = 1
 Subtitle.Text = "Unnamed Enhancements Style"
 Subtitle.TextColor3 = Color3.fromRGB(120, 120, 120)
@@ -70,7 +71,7 @@ Subtitle.Font = Enum.Font.Code
 Subtitle.TextXAlignment = Enum.TextXAlignment.Right
 Subtitle.Parent = MainFrame
 
--- SISTEMA DE PESTAÑAS (TABS BAR BARRA SUPERIOR)
+-- SISTEMA DE PESTAÑAS AMPLIADO (TABS BAR)
 -- =============================================================================
 local TabBar = Instance.new("Frame")
 TabBar.Size = UDim2.new(1, -20, 0, 30)
@@ -80,7 +81,7 @@ TabBar.BorderSizePixel = 1
 TabBar.BorderColor3 = Color3.fromRGB(40, 40, 40)
 TabBar.Parent = MainFrame
 
--- Páginas Contenedoras (Secciones del Menú)
+-- Cuadros contenedores de páginas
 local MainTabFrame = Instance.new("Frame")
 MainTabFrame.Size = UDim2.new(1, -20, 1, -85)
 MainTabFrame.Position = UDim2.new(0, 10, 0, 75)
@@ -102,9 +103,9 @@ SettingsTabFrame.BackgroundTransparency = 1
 SettingsTabFrame.Visible = false
 SettingsTabFrame.Parent = MainFrame
 
--- Botones de Navegación de Pestañas (main, esp, settings)
+-- Botones de las Pestañas superiores
 local MainTabButton = Instance.new("TextButton")
-MainTabButton.Size = UDim2.new(0, 80, 1, 0)
+MainTabButton.Size = UDim2.new(0, 90, 1, 0)
 MainTabButton.Position = UDim2.new(0, 0, 0, 0)
 MainTabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 MainTabButton.Text = "main"
@@ -114,8 +115,8 @@ MainTabButton.TextSize = 14
 MainTabButton.Parent = TabBar
 
 local EspTabButton = Instance.new("TextButton")
-EspTabButton.Size = UDim2.new(0, 80, 1, 0)
-EspTabButton.Position = UDim2.new(0, 85, 0, 0)
+EspTabButton.Size = UDim2.new(0, 90, 1, 0)
+EspTabButton.Position = UDim2.new(0, 95, 0, 0)
 EspTabButton.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
 EspTabButton.Text = "esp"
 EspTabButton.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -124,8 +125,8 @@ EspTabButton.TextSize = 14
 EspTabButton.Parent = TabBar
 
 local SettingsTabButton = Instance.new("TextButton")
-SettingsTabButton.Size = UDim2.new(0, 80, 1, 0)
-SettingsTabButton.Position = UDim2.new(0, 170, 0, 0)
+SettingsTabButton.Size = UDim2.new(0, 90, 1, 0)
+SettingsTabButton.Position = UDim2.new(0, 190, 0, 0)
 SettingsTabButton.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
 SettingsTabButton.Text = "settings"
 SettingsTabButton.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -133,12 +134,11 @@ SettingsTabButton.Font = Enum.Font.Code
 SettingsTabButton.TextSize = 14
 SettingsTabButton.Parent = TabBar
 
--- Lógica de Intercambio de Pestañas (Apartados Dinámicos)
+-- Lógica para alternar pestañas
 local function updateTabs(activeButton, activeFrame)
     MainTabFrame.Visible = false
     EspTabFrame.Visible = false
     SettingsTabFrame.Visible = false
-    
     MainTabButton.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
     MainTabButton.TextColor3 = Color3.fromRGB(150, 150, 150)
     EspTabButton.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
@@ -155,10 +155,11 @@ MainTabButton.MouseButton1Click:Connect(function() updateTabs(MainTabButton, Mai
 EspTabButton.MouseButton1Click:Connect(function() updateTabs(EspTabButton, EspTabFrame) end)
 SettingsTabButton.MouseButton1Click:Connect(function() updateTabs(SettingsTabButton, SettingsTabFrame) end)
 
--- COMPONENTES VISUALES DENTRO DEL APARTADO "MAIN"
+-- SECCIÓN INTERNA PRINCIPAL (MAIN TAB) - BOTONES DISTRIBUIDOS A LOS EXTREMOS
 -- =============================================================================
+-- Silent Aim posicionado al extremo izquierdo
 local SilentToggle = Instance.new("TextButton")
-SilentToggle.Size = UDim2.new(0, 210, 0, 35)
+SilentToggle.Size = UDim2.new(0, 240, 0, 35)
 SilentToggle.Position = UDim2.new(0, 15, 0, 20)
 SilentToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 SilentToggle.Text = "Silent Aim: OFF"
@@ -167,10 +168,21 @@ SilentToggle.Font = Enum.Font.Code
 SilentToggle.TextSize = 14
 SilentToggle.Parent = MainTabFrame
 
--- COMPONENTES VISUALES DENTRO DEL APARTADO "ESP" (SISTEMA DE VER A TRAVÉS DE PAREDES)
+-- Triggerbot añadido al extremo derecho (Como se ve en tu imagen del menú)
+local TriggerToggle = Instance.new("TextButton")
+TriggerToggle.Size = UDim2.new(0, 240, 0, 35)
+TriggerToggle.Position = UDim2.new(1, -255, 0, 20) -- Alineado simétricamente a la derecha
+TriggerToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TriggerToggle.Text = "Triggerbot: OFF"
+TriggerToggle.TextColor3 = Color3.fromRGB(255, 100, 100)
+TriggerToggle.Font = Enum.Font.Code
+TriggerToggle.TextSize = 14
+TriggerToggle.Parent = MainTabFrame
+
+-- SECCIÓN ESP (ESP TAB)
 -- =============================================================================
 local EspToggle = Instance.new("TextButton")
-EspToggle.Size = UDim2.new(0, 210, 0, 35)
+EspToggle.Size = UDim2.new(0, 240, 0, 35)
 EspToggle.Position = UDim2.new(0, 15, 0, 20)
 EspToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 EspToggle.Text = "ESP Highlight: OFF"
@@ -179,7 +191,7 @@ EspToggle.Font = Enum.Font.Code
 EspToggle.TextSize = 14
 EspToggle.Parent = EspTabFrame
 
--- COMPONENTES VISUALES DENTRO DEL APARTADO "SETTINGS" (CONTROLES DE TECLAS)
+-- SECCIÓN CONFIGURACIONES (SETTINGS TAB)
 -- =============================================================================
 local KeybindLabel = Instance.new("TextLabel")
 KeybindLabel.Size = UDim2.new(0, 200, 0, 30)
@@ -202,7 +214,7 @@ KeybindButton.Font = Enum.Font.Code
 KeybindButton.TextSize = 14
 KeybindButton.Parent = SettingsTabFrame
 
--- CONTROLES COMPLEMENTARIOS DE VENTANA (CERRAR Y MINIMIZAR)
+-- INTERFAZ COMPLEMENTARIA (CERRAR Y MINIMIZAR ORIGINALES)
 -- =============================================================================
 local FloatingCircle = Instance.new("TextButton")
 FloatingCircle.Name = "FloatingCircle"
@@ -240,11 +252,10 @@ CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseButton.Font = Enum.Font.SourceSansBold
 CloseButton.TextSize = 14
 CloseButton.Parent = MainFrame
-
--- SCRIPT CORE LOGIC INTERNA (SIN AFECTAR VARIABLES EXISTENTES NI AGREGAR AJENAS)
+-- LÓGICA DE INTERACTIVIDAD DE BOTONES TOGGLE
 -- =============================================================================
 SilentToggle.MouseButton1Click:Connect(function()
-    silentAimEnabled = not silentAimEnabled
+silentAimEnabled = not silentAimEnabled
 if silentAimEnabled then
 SilentToggle.BackgroundColor3 = Color3.fromRGB(0, 120, 70)
 SilentToggle.Text = "Silent Aim: ON"
@@ -253,6 +264,18 @@ else
 SilentToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 SilentToggle.Text = "Silent Aim: OFF"
 SilentToggle.TextColor3 = Color3.fromRGB(255, 100, 100)
+end
+end)
+TriggerToggle.MouseButton1Click:Connect(function()
+triggerbotEnabled = not triggerbotEnabled
+if triggerbotEnabled then
+TriggerToggle.BackgroundColor3 = Color3.fromRGB(0, 120, 70)
+TriggerToggle.Text = "Triggerbot: ON"
+TriggerToggle.TextColor3 = Color3.fromRGB(100, 255, 100)
+else
+TriggerToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TriggerToggle.Text = "Triggerbot: OFF"
+TriggerToggle.TextColor3 = Color3.fromRGB(255, 100, 100)
 end
 end)
 EspToggle.MouseButton1Click:Connect(function()
@@ -272,7 +295,7 @@ end
 end
 end
 end)
--- ASIGNACIÓN DE KEYBIND CON CAPTURA TECLADO INTERNA
+-- ASIGNACIÓN DE TECLAS DE ACCESO RÁPIDO
 KeybindButton.MouseButton1Click:Connect(function()
 bindingMode = true
 KeybindButton.Text = "[Presiona una tecla]"
@@ -295,7 +318,7 @@ MainFrame.Visible = menuVisible
 end
 end
 end)
--- DRAGGABLE SYSTEM (ARRASTRE LIBRE)
+-- SISTEMA DRAGGABLE DE ARRASTRE
 local function makeDraggable(guiElement)
 local dragging, dragInput, dragStart, startPos
 guiElement.InputBegan:Connect(function(input)
@@ -322,7 +345,7 @@ end)
 end
 makeDraggable(MainFrame)
 makeDraggable(FloatingCircle)
--- GESTIÓN DE PANTALLAS (ABRIR, OCULTAR Y CERRAR)
+-- MANEJO DE VENTANAS (OCULTAR, CERRAR)
 CloseButton.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 MinimizeButton.MouseButton1Click:Connect(function()
 MainFrame.Visible = false
@@ -334,7 +357,7 @@ FloatingCircle.Visible = false
 MainFrame.Position = FloatingCircle.Position
 MainFrame.Visible = menuVisible
 end)
--- PROCESADOR SEGMENTADO ANTI-LAG (SCANNER DE JUGADORES)
+-- PROCESADOR SEGMENTADO DE JUGADORES ANTI-LAG
 task.spawn(function()
 while true do
 task.wait(0.1)
@@ -360,6 +383,31 @@ end
 end
 end
 targetEnemy = closestPlayer
+end
+end
+end)
+-- LÓGICA CORE: SISTEMA DE TRIGGERBOT AUTOMÁTICO ASÍNCRONO
+task.spawn(function()
+while true do
+RunService.RenderStepped:Wait()
+if triggerbotEnabled and Mouse.Target then
+local targetObject = Mouse.Target
+local characterModel = targetObject.Parent
+local detectedPlayer = Players:GetPlayerFromCharacter(characterModel) or Players:GetPlayerFromCharacter(characterModel.Parent)
+if detectedPlayer and detectedPlayer ~= LocalPlayer then
+local humanoid = characterModel:FindFirstChildOfClass("Humanoid") or characterModel.Parent:FindFirstChildOfClass("Humanoid")
+if humanoid and humanoid.Health > 0 then
+-- Asegura compatibilidad ejecutando clics virtuales según la API de tu inyector
+if mouse1click then
+mouse1click()
+elseif Input then
+UserInputService:SimulateInput(Enum.UserInputType.MouseButton1, Enum.UserInputState.Begin)
+task.wait()
+UserInputService:SimulateInput(Enum.UserInputType.MouseButton1, Enum.UserInputState.End)
+end
+task.wait(0.05) -- Pequeño retraso para emular el tiempo de respuesta humano y evitar bloqueos
+end
+end
 end
 end
 end)
