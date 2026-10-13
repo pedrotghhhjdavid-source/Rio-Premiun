@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
 
 -- CONFIGURACIÓN DE LA INTERFAZ (GUI)
 -- =============================================================================
@@ -87,7 +88,7 @@ local AimButton = Instance.new("TextButton")
 AimButton.Size = UDim2.new(0, 270, 0, 40)
 AimButton.Position = UDim2.new(0, 15, 0, 60)
 AimButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-AimButton.Text = "AIM: OFF"
+AimButton.Text = "SILENT AIM: OFF"
 AimButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 AimButton.TextSize = 16
 AimButton.Font = Enum.Font.SourceSansBold
@@ -159,20 +160,19 @@ FloatingCircle.MouseButton1Click:Connect(function()
     MainFrame.Visible = true
 end)
 
--- FUNCIONES DEL SCRIPT (AIMBOT Y ESP)
+-- FUNCIONES DEL SCRIPT (SILENT AIM Y ESP)
 -- =============================================================================
-local aimbotEnabled = false
+local silentAimEnabled = false
 local espEnabled = false
-local holdsRightClick = false
 
 AimButton.MouseButton1Click:Connect(function()
-    aimbotEnabled = not aimbotEnabled
-    if aimbotEnabled then
+    silentAimEnabled = not silentAimEnabled
+    if silentAimEnabled then
         AimButton.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
-        AimButton.Text = "AIM: ON"
+        AimButton.Text = "SILENT AIM: ON"
     else
         AimButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-        AimButton.Text = "AIM: OFF"
+        AimButton.Text = "SILENT AIM: OFF"
     end
 end)
 
@@ -189,19 +189,6 @@ EspButton.MouseButton1Click:Connect(function()
                 player.Character.EspHighlight:Destroy()
             end
         end
-    end
-end)
-
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        holdsRightClick = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        holdsRightClick = false
     end
 end)
 
@@ -225,38 +212,60 @@ local function getClosestEnemy()
     return closestPlayer
 end
 
+-- LÓGICA DE INTERCEPCIÓN DE MOUSE (SILENT AIM DETRÁS DE ESCENAS)
+-- =============================================================================
+local gmt = hookmetamethod or getrawmetatable and function(t, index, value)
+    local mt = getrawmetatable(t)
+    setreadonly(mt, false)
+    mt[index] = value
+    setreadonly(mt, true)
+end
+
+if gmt then
+    local oldIndex
+    oldIndex = hookmetamethod(game, "__index", function(self, index)
+        if self == Mouse and (index == "Hit" or index == "Target") and silentAimEnabled then
+            local targetEnemy = getClosestEnemy()
+            if targetEnemy and targetEnemy.Character and targetEnemy.Character:FindFirstChild("Head") then
+                if index == "Hit" then
+                    return targetEnemy.Character.Head.CFrame
+                elseif index == "Target" then
+                    return targetEnemy.Character.Head
+                end
+            end
+        end
+        return oldIndex(self, index)
+    end)
+end
+
+-- BUCLE PRINCIPAL (RENDERSTEPPED) - CONTIENE LA LÓGICA DEL ESP
+-- =============================================================================
 RunService.RenderStepped:Connect(function()
-    if aimbotEnabled and holdsRightClick then
-        local target = getClosestEnemy()
-        if target and target.Character and target.Character:FindFirstChild("Head") then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.Head.Position)
-        end
-    end
-    if espEnabled then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChildOfClass("Humanoid") and player.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
-                local char = player.Character
-                local highlight = char:FindFirstChild("EspHighlight")
-                if not highlight then
-                    highlight = Instance.new("Highlight")
-                    highlight.Name = "EspHighlight"
-                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    highlight.FillTransparency = 0.5
-                    highlight.OutlineTransparency = 0
-                    highlight.Adornee = char
-                    highlight.Parent = char
-                end
-            end
-        end
-    else
-        for _, player in pairs(Players:GetPlayers()) do
-            if player.Character then
-                local highlight = player.Character:FindFirstChild("EspHighlight")
-                if highlight then
-                    highlight:Destroy()
-                end
-            end
-        end
-    end
+if espEnabled then
+for _, player in pairs(Players:GetPlayers()) do
+if player ~= LocalPlayer and player.Character and player.Character:FindFirstChildOfClass("Humanoid") and player.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+local char = player.Character
+local highlight = char:FindFirstChild("EspHighlight")
+if not highlight then
+highlight = Instance.new("Highlight")
+highlight.Name = "EspHighlight"
+highlight.FillColor = Color3.fromRGB(255, 0, 0)
+highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+highlight.FillTransparency = 0.5
+highlight.OutlineTransparency = 0
+highlight.Adornee = char
+highlight.Parent = char
+end
+end
+end
+else
+for _, player in pairs(Players:GetPlayers()) do
+if player.Character then
+local highlight = player.Character:FindFirstChild("EspHighlight")
+if highlight then
+highlight:Destroy()
+end
+end
+end
+end
 end)
