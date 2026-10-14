@@ -806,95 +806,47 @@ task.spawn(newcclosure(function()
     end
 end))
 
--- ESP
-task.spawn(newcclosure(function()
-    while task.wait(0.06) do
-        for _, obj in ipairs(espObjects) do
-            for _, v in pairs(obj) do
-                if typeof(v) == "table" then
-                    for _, line in ipairs(v) do if line.Remove then line:Remove() end end
-                elseif v and v.Remove then v:Remove() end
-            end
-        end
-        espObjects = {}
-        if espVars and espVars.enabled then
-            for _, plr in ipairs(Players:GetPlayers()) do
-                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                    local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-                    if hum and hum.Health > 0 then
-                        local hrp = plr.Character.HumanoidRootPart
-                        local cam = Camera
-                        local root2D, onScreen = cam:WorldToViewportPoint(hrp.Position)
-                        local box = Drawing.new("Square")
-                        box.Visible = espVars.boxes or false
-                        box.Color = espVars.color or Color3.new(0, 1, 0)
-                        box.Thickness = 2
-                        box.Filled = false
-                        local ext = plr.Character:GetExtentsSize()
-                        box.Size = Vector2.new(ext.X * 2.3, ext.Y * 2.6)
-                        box.Position = Vector2.new(root2D.X - box.Size.X / 2, root2D.Y - box.Size.Y / 2)
-
-                        local skeletonLines = {}
-                        if espVars.skeleton then
-                            local function drawBone(a, b)
-                                if plr.Character:FindFirstChild(a) and plr.Character:FindFirstChild(b) then
-                                    local p1, v1 = cam:WorldToViewportPoint(plr.Character[a].Position)
-                                    local p2, v2 = cam:WorldToViewportPoint(plr.Character[b].Position)
-                                    if v1 and v2 then
-                                        local line = Drawing.new("Line")
-                                        line.Visible = true
-                                        line.Color = espVars.color or Color3.fromRGB(255, 255, 255)
-                                        line.From = Vector2.new(p1.X, p1.Y)
-                                        line.To = Vector2.new(p2.X, p2.Y)
-                                        line.Thickness = 1.5
-                                        table.insert(skeletonLines, line)
-                                    end
-                                end
-                            end
-                            drawBone("Head", "UpperTorso")
-                            drawBone("UpperTorso", "LowerTorso")
-                            drawBone("UpperTorso", "LeftUpperArm")
-                            drawBone("UpperTorso", "RightUpperArm")
-                            drawBone("LeftUpperArm", "LeftLowerArm")
-                            drawBone("LeftLowerArm", "LeftHand")
-                            drawBone("RightUpperArm", "RightLowerArm")
-                            drawBone("RightLowerArm", "RightHand")
-                            drawBone("LowerTorso", "LeftUpperLeg")
-                            drawBone("LowerTorso", "RightUpperLeg")
-                            drawBone("LeftUpperLeg", "LeftLowerLeg")
-                            drawBone("LeftLowerLeg", "LeftFoot")
-                            drawBone("RightUpperLeg", "RightLowerLeg")
-                            drawBone("RightLowerLeg", "RightFoot")
-                        end
-
-                        local healthBar = Drawing.new("Line")
-                        healthBar.Visible = espVars.boxes and espVars.healthbar
-                        healthBar.Color = Color3.new(1 - hum.Health / hum.MaxHealth, hum.Health / hum.MaxHealth, 0)
-                        healthBar.Thickness = 4
-                        healthBar.From = Vector2.new(root2D.X - box.Size.X / 2 - 5, root2D.Y + box.Size.Y / 2)
-                        healthBar.To = Vector2.new(healthBar.From.X, healthBar.From.Y - (hum.Health / hum.MaxHealth) * box.Size.Y)
-
-                        local name = Drawing.new("Text")
-                        name.Visible = espVars.names
-                        name.Text = plr.DisplayName or plr.Name
-                        name.Position = Vector2.new(root2D.X, root2D.Y - box.Size.Y / 2 - 12)
-                        name.Color = espVars.color or Color3.new(1, 1, 1)
-                        name.Size = 16
-
-                        local distText = Drawing.new("Text")
-                        distText.Visible = espVars.distance
-                        distText.Text = math.floor((hrp.Position - cam.CFrame.Position).Magnitude) .. "m"
-                        distText.Position = Vector2.new(root2D.X, root2D.Y + box.Size.Y / 2 + 2)
-                        distText.Color = espVars.color or Color3.new(0.9, 0.9, 1)
-                        distText.Size = 13
-
-                        table.insert(espObjects, { box = box, skeleton = skeletonLines, healthbar = healthBar, name = name, distance = distText })
+-- ===== BUCLE ESP MINIMALISTA ROJO =====
+local ESP_Boxes = {}
+RunService.RenderStepped:Connect(function()
+    -- Ocultar cajas viejas si el ESP está apagado
+    for _, box in ipairs(ESP_Boxes) do
+        if box.__OBJ then box.__OBJ.Visible = false end
+    end
+    
+    if not (espVars and espVars.enabled) then return end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if IsEnemy(player) then
+            local char = GetCharacter(player)
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local hrp = char.HumanoidRootPart
+                local root2D, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                
+                if onScreen then
+                    local boxObj = nil
+                    for _, b in ipairs(ESP_Boxes) do
+                        if b.char == char then boxObj = b.__OBJ break end
                     end
+                    
+                    if not boxObj then
+                        boxObj = Drawing.new("Square")
+                        boxObj.Thickness = 1 -- Línea fina y limpia
+                        boxObj.Color = Color3.fromRGB(255, 0, 0) -- Rojo Puro
+                        boxObj.Filled = false
+                        boxObj.Transparency = 0.7 -- Transparencia suave para que no estorbe
+                        table.insert(ESP_Boxes, {char = char, __OBJ = boxObj})
+                    end
+                    
+                    local ext = char:GetExtentsSize()
+                    boxObj.Size = Vector2.new(ext.X * 2.3, ext.Y * 2.6)
+                    boxObj.Position = Vector2.new(root2D.X - boxObj.Size.X / 2, root2D.Y - boxObj.Size.Y / 2)
+                    boxObj.Visible = espVars.boxes or false
                 end
             end
         end
     end
-end))
+end)
 
 -- Velocidad
 task.spawn(newcclosure(function()
@@ -956,11 +908,74 @@ if not getgenv()._InfJumpConnection then
     end))
 end
 
--- Anti-kick
+-- ===== LOGICA DE TARGET PARA SILENT AIM =====
+local function GetCharacter(player)
+    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+        return player.Character
+    end
+    return nil
+end
+
+local function IsEnemy(player)
+    return player ~= LocalPlayer and player.Team ~= nil and LocalPlayer.Team ~= nil and player.Team ~= LocalPlayer.Team
+end
+
+local function GetClosestTarget()
+    local shortest = silentAimVars.radius or 120
+    local closestChar, closestPart
+    local mousePos = UserInputService:GetMouseLocation()
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if IsEnemy(player) then
+            local char = GetCharacter(player)
+            local targetPartName = silentAimVars.targeting.selectedTargetPart or "Head"
+            if char and char:FindFirstChild(targetPartName) then
+                local part = char[targetPartName]
+                local screenPos, onScr = Camera:WorldToViewportPoint(part.Position)
+                if onScr then
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mousePos.X, mousePos.Y)).Magnitude
+                    if dist <= shortest then
+                        shortest = dist
+                        closestChar = char
+                        closestPart = part
+                    end
+                end
+            end
+        end
+    end
+    return closestChar, closestPart
+end
+
+-- ===== HOOK COMBINADO (__namecall: Anti-Kick + Silent Aim Real) =====
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     local method = getnamecallmethod and getnamecallmethod() or ""
-    if method == "Kick" then return nil end
+    
+    -- 1. Protección Anti-Kick
+    if method == "Kick" then 
+        return nil 
+    end
+    
+    -- 2. Silent Aim (Redirección de balas real en el motor)
+    if silentAimVars and silentAimVars.enabled then
+        if (method == "FindPartOnRayWithIgnoreList" and self == Workspace) or (method == "Raycast" and self == Workspace) then
+            local args = {...}
+            local targetChar, targetPart = GetClosestTarget()
+            
+            if targetPart and math.random(100) <= (silentAimVars.hitChance or 100) then
+                if method == "FindPartOnRayWithIgnoreList" then
+                    local newRay = Ray.new(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position).Unit * 5000)
+                    args[1] = newRay
+                    return oldNamecall(self, unpack(args))
+                else -- Raycast
+                    args[1] = Camera.CFrame.Position
+                    args[2] = (targetPart.Position - Camera.CFrame.Position).Unit * 5000
+                    return oldNamecall(self, unpack(args))
+                end
+            end
+        end
+    end
+    
     return oldNamecall(self, ...)
 end))
 
