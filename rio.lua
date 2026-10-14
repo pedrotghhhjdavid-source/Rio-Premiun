@@ -1,871 +1,1334 @@
--- ============================================================
--- RIO PREMIUM UI + LOGICA  (ARCHIVO UNICO)
--- Pega TODO esto en un solo script y ejecutalo.
--- ============================================================
+--!nocheck
+--!native
 
--- ===== SERVICIOS =====
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
-local UserInputService = UIS
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
+--[[                              ...,...,..................                               
+                      ,,,,........,.,...,...........,.,...............,                   
+                 *,,,,,,.,,,,,,,,,,,,,,,,,,,.......,,.,.................,,.               
+                *,,,,,.,,........,,,,,,,,,,,,,,,,,,,,,,,,...............,,,               
+                ,,,,,,,,,,,,,,,,,....,,,,,,,,,,,,,,,,,.....,,,,,,........,,,              
+                ,,,,,,,*&@@@@@%,,/(**...,,,,,,,,,,,...,**,,,/%&@&%*....,,.,,              
+                ,,,,&@(/(((((&@@@@@@@,%*,,,*,*,,,,,**,@@@@@@@@(//////&%...,,              
+               ,,,,/,,,,,,,,,,,*(/#@@@@@(%,****,**@@@@@@#(/*,,,,,,,...,/..,,              
+               *,,,,,,,,,,,,*******///(@#/******(@@@///*****,,,,,,,,,,,,.,,,              
+               *,,,,****************//////*,,,,,****/*************,,,,,,,,,,              
+               ,,,*******///    .//////***,,....,**//**/**    .****,**,,,,,,              
+               .,,,***//              ***,,.....,,,*/             ,****,,,,,              
+               ,,,,,,,,**//********,,,,,,,.......,,,,,*************,...,,,,,(             
+               *,,,,,,,,,,,,,,,,...,,,,,,,.........,,,,......,,,,,,,,,..,.,,&             
+               #,,******,,,,,,,,,,,,,,,,,,.......,.,.....,,,,,,,,,,,,,,,,,,,#             
+                **/////*****,,,,,,,,,,,,,,..........,,,,,,,,,,,,,,,*******,,              
+                ***////////********,,,,,,,.........,,.,*************///***,,              
+                ****/////////////**,,,,,*,,,,,,,,,,,,,.,,/////**********,*,,              
+                ***//////////*,,,,***//****/*//*********,,,,,*((/////*/*,,,               
+                *****//@@**,,,,,,,,**/(/########%&///*,,,,,,,,,/*@@/***,,,,               
+                 *******@@@**,,,,,,**(/@@@@@@@@@@@@/(**,,***/#/@@@***,,,,,                
+                 *********@@@@@@&%@@@@@@@@@(((%@@@@@@@@@&%@@@@@@*,**,,,,,,                
+                 .***********//##%&@@@@@@(#////(#@@@@@@&%#///******,,*,,,                 
+                  **************,,,,***/**************,,,,******,,***,,,                  
+                   ,**********/////////**//////////////*************,,,                   
+                     ************///////((@@@@@@%(/******************                     
+                       **********//**////(@@@@@@/*****************,                       
+                         ****************(@@@@@@/**,************                          
+                            *************(&@@@@@/*************                            
+                              ,**********/%@@@@&/**********                               
+                                  */*//////@@@&%////****                                  
+                                     //////&@@&/////*   
 
-local newcclosure = (type(newcclosure) == "function") and newcclosure or function(f) return f end
 
-if not LocalPlayer then
-    warn("Rio: LocalPlayer no disponible.")
-    return
+-----------------------------------------------------------------
+
+                    discord.gg/vKXWdGT8pc                        
+
+-----------------------------------------------------------------
+
+]]
+
+local arguments = table.pack(...)
+local sharedEnv = getgenv and getgenv() or _G
+local previous = rawget(sharedEnv, 'Unnamed Enhancements - Cracked')
+
+if type(previous) == 'table' and (previous.status == 'starting' or previous.status == 'entry_returned') then
+    return previous
+end
+if rawget(sharedEnv, 'UE_LOADED') == true then
+    return previous
 end
 
--- ===== VARIABLES COMPARTIDAS =====
--- La UI las modifica, la logica las lee.
-getgenv().silentAimVars = getgenv().silentAimVars or {
-    enabled = false,
-    hitChance = 100,
-    radius = 15,
-    manipulation = false,
-    closestPart = true,
-    visualize = false,
-    showFov = true,
-    targeting = { selectedTargetPart = "Head" },
+local control = {
+    status = 'starting',
+    started = os.clock(),
+    error = nil,
+    stopped = false,
 }
-getgenv().ragebotVars = getgenv().ragebotVars or { enabled = false, fov = 999 }
-getgenv().aimbotVars = getgenv().aimbotVars or { enabled = false, smoothing = 50, fov = 15 }
-getgenv().characterVars = getgenv().characterVars or {
-    voidSpam = false,
-    flyToggle = false,
-    noclipToggle = false,
-    infiniteJump = false,
-    movementSpeed = 16,
-}
-getgenv().espVars = getgenv().espVars or {
-    enabled = false, boxes = false, skeleton = false, healthbar = false,
-    names = false, distance = false, color = Color3.fromRGB(0, 255, 0),
-}
 
-local silentAimVars = getgenv().silentAimVars
-local ragebotVars = getgenv().ragebotVars
-local aimbotVars = getgenv().aimbotVars
-local characterVars = getgenv().characterVars
-local espVars = getgenv().espVars
+sharedEnv['Unnamed Enhancements - Cracked'] = control
 
--- ============================================================
--- INTERFAZ
--- ============================================================
-local ACCENT = Color3.fromRGB(105, 48, 220)
-local BG = Color3.fromRGB(17, 17, 18)
-local PANEL = Color3.fromRGB(25, 25, 27)
-local INNER = Color3.fromRGB(31, 31, 34)
-local WHITE = Color3.fromRGB(225, 225, 228)
-local MUTED = Color3.fromRGB(150, 150, 155)
-local OFF = Color3.fromRGB(36, 36, 39)
+local previousLoaded = rawget(sharedEnv, 'UE_LOADED')
+local previousLibrary = rawget(sharedEnv, 'Library')
+local previousOptions = rawget(sharedEnv, 'Options')
+local previousToggles = rawget(sharedEnv, 'Toggles')
+local budgets = setmetatable({}, {
+    __mode = 'k',
+})
+local schedulerFrame = 0
+local heartbeatConnection
 
-local toggleKey = Enum.KeyCode.RightShift
-local moveEnabled = false
-local draggingWindow = false
-local listeningKey = false
-local selectedTab = "main"
-local accentTargets = {}
-local accentRefreshers = {}
-local pages = {}
-local tabButtons = {}
-local columns = {}
-
-local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-local coreGui
-pcall(function() coreGui = game:GetService("CoreGui") end)
-
-local parent = coreGui or playerGui
-
-for _, container in ipairs({playerGui, coreGui}) do
-    if container then
-        pcall(function()
-            local old = container:FindFirstChild("RioPremiumUI")
-            if old then old:Destroy() end
-        end)
-    end
-end
-
-local function create(className, properties, parentObject)
-    local object = Instance.new(className)
-    for property, value in pairs(properties) do
-        object[property] = value
-    end
-    object.Parent = parentObject
-    return object
-end
-
-local function registerAccent(object, property)
-    table.insert(accentTargets, { object = object, property = property })
-end
-
-local function setAccentColor(color)
-    ACCENT = color
-    for _, item in ipairs(accentTargets) do
-        pcall(function() item.object[item.property] = ACCENT end)
-    end
-    for _, refresh in ipairs(accentRefreshers) do
-        pcall(refresh)
-    end
-end
-
-local gui = create("ScreenGui", {
-    Name = "RioPremiumUI",
-    ResetOnSpawn = false,
-    IgnoreGuiInset = true,
-    DisplayOrder = 999,
-    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-}, parent)
-
-local main = create("Frame", {
-    Name = "Main",
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.fromScale(0.5, 0.5),
-    Size = UDim2.fromOffset(640, 760),
-    BackgroundColor3 = BG,
-    BorderSizePixel = 1,
-    BorderColor3 = Color3.fromRGB(45, 45, 48),
-}, gui)
-
-create("UISizeConstraint", { MinSize = Vector2.new(580, 620), MaxSize = Vector2.new(680, 800) }, main)
-
-local floatButton = create("TextButton", {
-    Name = "RioRageFloat",
-    AnchorPoint = Vector2.new(1, 0.5),
-    Position = UDim2.new(0.5, -330, 0.5, 0),
-    Size = UDim2.fromOffset(62, 62),
-    BackgroundColor3 = ACCENT,
-    BorderSizePixel = 0,
-    Text = "RioRage",
-    TextColor3 = Color3.fromRGB(0, 0, 0),
-    Font = Enum.Font.GothamBold,
-    TextSize = 10,
-    ZIndex = 50,
-}, gui)
-create("UICorner", { CornerRadius = UDim.new(1, 0) }, floatButton)
-local floatStroke = create("UIStroke", { Color = Color3.fromRGB(30, 30, 30), Thickness = 1.5 }, floatButton)
-registerAccent(floatStroke, "Color")
-
-local draggingFloat, movedFloat, pointerStart, buttonStart = false, false, nil, nil
-
-floatButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-        draggingFloat, movedFloat = true, false
-        pointerStart = input.Position
-        buttonStart = floatButton.Position
-    end
-end)
-
-UIS.InputChanged:Connect(function(input)
-    if not draggingFloat then return end
-    if input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch then
-        local delta = input.Position - pointerStart
-        if delta.Magnitude > 5 then movedFloat = true end
-        if movedFloat then
-            floatButton.Position = UDim2.new(
-                buttonStart.X.Scale, buttonStart.X.Offset + delta.X,
-                buttonStart.Y.Scale, buttonStart.Y.Offset + delta.Y)
-        end
-    end
-end)
-
-UIS.InputEnded:Connect(function(input)
-    if not draggingFloat then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-        draggingFloat = false
-        if not movedFloat and gui.Parent then
-            main.Visible = not main.Visible
-        end
-    end
-end)
-
-local moveButton = create("TextButton", {
-    Name = "RioMoveToggle",
-    AnchorPoint = Vector2.new(1, 0.5),
-    Position = UDim2.new(0.5, -330, 0.5, 70),
-    Size = UDim2.fromOffset(62, 62),
-    BackgroundColor3 = ACCENT,
-    BorderSizePixel = 0,
-    Text = "ON",
-    TextColor3 = Color3.fromRGB(0, 0, 0),
-    Font = Enum.Font.GothamBold,
-    TextSize = 16,
-    ZIndex = 50,
-}, gui)
-create("UICorner", { CornerRadius = UDim.new(1, 0) }, moveButton)
-local moveStroke = create("UIStroke", { Color = Color3.fromRGB(30, 30, 30), Thickness = 1.5 }, moveButton)
-registerAccent(moveStroke, "Color")
-
-local moveButtonDragging, moveButtonMoved, moveButtonStart, moveButtonStartPosition, moveButtonTouch =
-    false, false, nil, nil, nil
-
-moveButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-        moveButtonDragging, moveButtonMoved = true, false
-        moveButtonStart = input.Position
-        moveButtonStartPosition = moveButton.Position
-        moveButtonTouch = (input.UserInputType == Enum.UserInputType.Touch) and input or nil
-    end
-end)
-
-UIS.InputChanged:Connect(function(input)
-    if not moveButtonDragging then return end
-    local validInput = moveButtonTouch and (input == moveButtonTouch)
-        or (input.UserInputType == Enum.UserInputType.MouseMovement)
-    if not validInput then return end
-    local delta = input.Position - moveButtonStart
-    if delta.Magnitude > 5 then moveButtonMoved = true end
-    if moveButtonMoved then
-        moveButton.Position = UDim2.new(
-            moveButtonStartPosition.X.Scale, moveButtonStartPosition.X.Offset + delta.X,
-            moveButtonStartPosition.Y.Scale, moveButtonStartPosition.Y.Offset + delta.Y)
-    end
-end)
-
-UIS.InputEnded:Connect(function(input)
-    if not moveButtonDragging then return end
-    local finished = moveButtonTouch and (input == moveButtonTouch)
-        or (input.UserInputType == Enum.UserInputType.MouseButton1)
-    if not finished then return end
-    moveButtonDragging, moveButtonTouch = false, nil
-    if not moveButtonMoved then
-        moveEnabled = not moveEnabled
-        if moveEnabled then moveButton.Text = "OFF"
-        else moveButton.Text = "ON"; draggingWindow = false end
-    end
-end)
-
-local outline = create("UIStroke", { Color = ACCENT, Thickness = 1 }, main)
-registerAccent(outline, "Color")
-
-local header = create("Frame", { Name = "Header", Size = UDim2.new(1, 0, 0, 43), BackgroundColor3 = PANEL, BorderSizePixel = 0 }, main)
-
-local dragStart, startPos, dragInput
-
-header.InputBegan:Connect(function(input)
-    if not moveEnabled then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-        draggingWindow = true
-        dragStart = input.Position
-        startPos = main.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then draggingWindow = false end
-        end)
-    end
-end)
-
-header.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-end)
-
-UIS.InputChanged:Connect(function(input)
-    if not moveEnabled or not draggingWindow or input ~= dragInput then return end
-    local delta = input.Position - dragStart
-    main.Position = UDim2.new(
-        startPos.X.Scale, startPos.X.Offset + delta.X,
-        startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end)
-
-create("TextLabel", {
-    Name = "RioRageTitle", AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.fromOffset(260, 32),
-    BackgroundTransparency = 1, Text = "RioRage.win",
-    TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.GothamBold,
-    TextSize = 20, TextXAlignment = Enum.TextXAlignment.Center,
-}, header)
-
-create("TextLabel", {
-    Name = "GameLabel", AnchorPoint = Vector2.new(1, 0.5),
-    Position = UDim2.new(1, -50, 0.5, 0), Size = UDim2.fromOffset(100, 32),
-    BackgroundTransparency = 1, Text = "Rivals",
-    TextColor3 = Color3.fromRGB(255, 255, 255), Font = Enum.Font.GothamBold,
-    TextSize = 20, TextXAlignment = Enum.TextXAlignment.Right,
-}, header)
-
-local close = create("TextButton", {
-    AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -9, 0.5, 0),
-    Size = UDim2.fromOffset(33, 29), BackgroundColor3 = Color3.fromRGB(90, 28, 35),
-    BorderSizePixel = 0, Text = "X", TextColor3 = WHITE, Font = Enum.Font.Code, TextSize = 18,
-}, header)
-close.MouseButton1Click:Connect(function() gui:Destroy() end)
-
-local nav = create("Frame", { Position = UDim2.fromOffset(8, 49), Size = UDim2.new(1, -16, 0, 39), BackgroundTransparency = 1 }, main)
-create("UIListLayout", {
-    FillDirection = Enum.FillDirection.Horizontal,
-    HorizontalAlignment = Enum.HorizontalAlignment.Left,
-    VerticalAlignment = Enum.VerticalAlignment.Center,
-    Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder,
-}, nav)
-
-local tabNames = { "main", "world", "esp", "visuals", "character", "misc", "settings" }
-
-local body = create("Frame", { Position = UDim2.fromOffset(8, 96), Size = UDim2.new(1, -16, 1, -104), BackgroundTransparency = 1 }, main)
-
-local function makeColumns(page)
-    local left = create("ScrollingFrame", {
-        Name = "LeftColumn", Size = UDim2.new(0.5, -5, 1, 0), BackgroundTransparency = 1,
-        ScrollBarThickness = 4, ScrollBarImageColor3 = ACCENT,
-        AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(),
-        ScrollingDirection = Enum.ScrollingDirection.Y,
-    }, page)
-    local right = create("ScrollingFrame", {
-        Name = "RightColumn", Position = UDim2.new(0.5, 5, 0, 0), Size = UDim2.new(0.5, -5, 1, 0),
-        BackgroundTransparency = 1, ScrollBarThickness = 4, ScrollBarImageColor3 = ACCENT,
-        AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(),
-        ScrollingDirection = Enum.ScrollingDirection.Y,
-    }, page)
-    registerAccent(left, "ScrollBarImageColor3")
-    registerAccent(right, "ScrollBarImageColor3")
-    for _, column in ipairs({left, right}) do
-        create("UIListLayout", { Padding = UDim.new(0, 9), SortOrder = Enum.SortOrder.LayoutOrder }, column)
-    end
-    return left, right
-end
-
-for index, name in ipairs(tabNames) do
-    local tab = create("TextButton", {
-        Name = name .. "Tab", LayoutOrder = index, Size = UDim2.new(1 / #tabNames, -5, 1, 0),
-        BackgroundColor3 = OFF, BorderSizePixel = 1, BorderColor3 = Color3.fromRGB(48, 48, 52),
-        Text = name, TextColor3 = WHITE, Font = Enum.Font.Code, TextSize = 17,
-    }, nav)
-    local page = create("Frame", { Name = name .. "Page", Visible = name == "main", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, body)
-    local left, right = makeColumns(page)
-    tabButtons[name], pages[name], columns[name] = tab, page, {left, right}
-    tab.MouseButton1Click:Connect(function()
-        selectedTab = name
-        for key, otherPage in pairs(pages) do otherPage.Visible = key == selectedTab end
-        for key, otherTab in pairs(tabButtons) do
-            otherTab.BackgroundColor3 = key == selectedTab and ACCENT or OFF
-            otherTab.TextColor3 = key == selectedTab and WHITE or MUTED
-        end
-    end)
-end
-
-table.insert(accentRefreshers, function()
-    for key, tab in pairs(tabButtons) do
-        tab.BackgroundColor3 = key == selectedTab and ACCENT or OFF
-        tab.TextColor3 = key == selectedTab and WHITE or MUTED
-    end
-end)
-
-local function section(parentObject, name, height)
-    local panel = create("Frame", {
-        Name = name, Size = UDim2.new(1, -5, 0, height), BackgroundColor3 = PANEL,
-        BorderSizePixel = 1, BorderColor3 = Color3.fromRGB(48, 48, 52),
-    }, parentObject)
-    local line = create("Frame", { Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = ACCENT }, panel)
-    registerAccent(line, "BackgroundColor3")
-    create("TextLabel", {
-        Position = UDim2.fromOffset(10, 3), Size = UDim2.new(1, -20, 0, 27),
-        BackgroundTransparency = 1, Text = name, TextColor3 = WHITE,
-        Font = Enum.Font.Code, TextSize = 17, TextXAlignment = Enum.TextXAlignment.Center,
-    }, panel)
-    local content = create("Frame", { Position = UDim2.fromOffset(8, 34), Size = UDim2.new(1, -16, 1, -41), BackgroundTransparency = 1 }, panel)
-    create("UIListLayout", { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder }, content)
-    return content
-end
-
--- Checkbox con CALLBACK (conecta a las variables)
-local function checkbox(parentObject, label, default, callback)
-    local state = default == true
-    local row = create("Frame", { Size = UDim2.new(1, 0, 0, 27), BackgroundTransparency = 1 }, parentObject)
-    local box = create("TextButton", {
-        Position = UDim2.fromOffset(0, 4), Size = UDim2.fromOffset(19, 19),
-        BackgroundColor3 = state and ACCENT or OFF, BorderSizePixel = 1,
-        BorderColor3 = Color3.fromRGB(50, 50, 54), Text = state and "✓" or "",
-        TextColor3 = WHITE, Font = Enum.Font.Code, TextSize = 15,
-    }, row)
-    local labelText = create("TextLabel", {
-        Position = UDim2.fromOffset(27, 0), Size = UDim2.new(1, -29, 1, 0),
-        BackgroundTransparency = 1, Text = label, TextColor3 = WHITE,
-        Font = Enum.Font.Code, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Left,
-    }, row)
-
-    local function refresh()
-        box.BackgroundColor3 = state and ACCENT or OFF
-        box.Text = state and "✓" or ""
-        if callback then callback(state) end
-    end
-    table.insert(accentRefreshers, function()
-        box.BackgroundColor3 = state and ACCENT or OFF
-    end)
-
-    box.MouseButton1Click:Connect(function() state = not state; refresh() end)
-    labelText.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
-            state = not state; refresh()
-        end
-    end)
-    if callback then callback(state) end
-end
-
--- Slider con CALLBACK
-local function slider(parentObject, label, minValue, maxValue, initial, suffix, callback)
-    local value = initial
-    local dragging = false
-    local row = create("Frame", { Size = UDim2.new(1, 0, 0, 47), BackgroundTransparency = 1 }, parentObject)
-    create("TextLabel", {
-        Size = UDim2.new(0.68, 0, 0, 21), BackgroundTransparency = 1, Text = label,
-        TextColor3 = WHITE, Font = Enum.Font.Code, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left,
-    }, row)
-    local valueText = create("TextLabel", {
-        Position = UDim2.new(0.68, 0, 0, 0), Size = UDim2.new(0.32, 0, 0, 21),
-        BackgroundTransparency = 1, TextColor3 = WHITE, Text = tostring(value) .. (suffix or ""),
-        Font = Enum.Font.Code, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Right,
-    }, row)
-    local track = create("TextButton", {
-        Position = UDim2.new(0, 0, 0, 27), Size = UDim2.new(1, 0, 0, 9),
-        BackgroundColor3 = OFF, BorderSizePixel = 0, Text = "", AutoButtonColor = false,
-    }, row)
-    local fill = create("Frame", { Size = UDim2.new((value - minValue) / (maxValue - minValue), 0, 1, 0), BackgroundColor3 = ACCENT }, track)
-    registerAccent(fill, "BackgroundColor3")
-
-    local function update(x)
-        local width = track.AbsoluteSize.X
-        if width <= 0 then return end
-        local fraction = math.clamp((x - track.AbsolutePosition.X) / width, 0, 1)
-        value = math.floor(minValue + fraction * (maxValue - minValue) + 0.5)
-        valueText.Text = tostring(value) .. (suffix or "")
-        fill.Size = UDim2.new(fraction, 0, 1, 0)
-        if callback then callback(value) end
+local function __step(id)
+    if control.stopped then
+        error('execution stopped', 0)
     end
 
-    track.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true; update(input.Position.X)
-        end
-    end)
-    UIS.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
-            or input.UserInputType == Enum.UserInputType.Touch) then update(input.Position.X) end
-    end)
-    UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
-    end)
-    if callback then callback(value) end
-end
+    local thread = coroutine.running()
+    local state = budgets[thread]
 
--- Dropdown con CALLBACK
-local function dropdown(parentObject, label, options, initialIndex, callback)
-    local index = initialIndex or 1
-    local row = create("Frame", { Size = UDim2.new(1, 0, 0, 47), BackgroundTransparency = 1 }, parentObject)
-    create("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = label,
-        TextColor3 = WHITE, Font = Enum.Font.Code, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left,
-    }, row)
-    local button = create("TextButton", {
-        Position = UDim2.fromOffset(0, 22), Size = UDim2.new(1, 0, 0, 24),
-        BackgroundColor3 = INNER, BorderSizePixel = 1, BorderColor3 = Color3.fromRGB(48, 48, 52),
-        Text = options[index] .. "   >", TextColor3 = WHITE, Font = Enum.Font.Code,
-        TextSize = 15, TextXAlignment = Enum.TextXAlignment.Left,
-    }, row)
-    button.MouseButton1Click:Connect(function()
-        index = index % #options + 1
-        button.Text = options[index] .. "   >"
-        if callback then callback(options[index], index) end
-    end)
-    if callback then callback(options[index], index) end
-end
+    if not state then
+        local now = os.clock()
 
-local function actionButton(parentObject, text, callback)
-    local button = create("TextButton", {
-        Size = UDim2.new(1, 0, 0, 32), BackgroundColor3 = INNER, BorderSizePixel = 1,
-        BorderColor3 = Color3.fromRGB(48, 48, 52), Text = text, TextColor3 = WHITE,
-        Font = Enum.Font.Code, TextSize = 15,
-    }, parentObject)
-    button.MouseButton1Click:Connect(callback)
-    return button
-end
+        state = {
+            ticks = 0,
+            frame = schedulerFrame,
+            started = now,
+        }
+        budgets[thread] = state
+    end
 
-local function note(parentObject, text)
-    create("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1, Text = text,
-        TextWrapped = true, TextColor3 = MUTED, Font = Enum.Font.Code, TextSize = 13,
-    }, parentObject)
-end
+    state.ticks += 1
 
--- ============================================================
--- MAIN (conectado)
--- ============================================================
-local left, right = columns.main[1], columns.main[2]
-
-local aimPanel = create("Frame", {
-    Name = "AimSettingsTabs", Size = UDim2.new(1, -5, 0, 292), BackgroundColor3 = PANEL,
-    BorderSizePixel = 1, BorderColor3 = Color3.fromRGB(48, 48, 52),
-}, left)
-local aimTop = create("Frame", { Size = UDim2.new(1, 0, 0, 31), BackgroundColor3 = BG }, aimPanel)
-local aimLine = create("Frame", { Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = ACCENT }, aimTop)
-registerAccent(aimLine, "BackgroundColor3")
-
-local silentTab = create("TextButton", {
-    Name = "SilentAimTab", Size = UDim2.new(0.5, 0, 1, 0), BackgroundColor3 = ACCENT,
-    BorderSizePixel = 0, Text = "silent aim", TextColor3 = WHITE, Font = Enum.Font.Code, TextSize = 16,
-}, aimTop)
-local aimbotTab = create("TextButton", {
-    Name = "AimbotTab", Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.new(0.5, 0, 1, 0),
-    BackgroundColor3 = OFF, BorderSizePixel = 0, Text = "aimbot", TextColor3 = WHITE,
-    Font = Enum.Font.Code, TextSize = 16,
-}, aimTop)
-
-local aimBody = create("Frame", { Position = UDim2.fromOffset(8, 38), Size = UDim2.new(1, -16, 1, -44), BackgroundTransparency = 1 }, aimPanel)
-local silentPage = create("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, aimBody)
-local aimbotPage = create("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false }, aimBody)
-for _, page in ipairs({silentPage, aimbotPage}) do
-    create("UIListLayout", { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder }, page)
-end
-
-local function refreshAimTabs()
-    silentTab.BackgroundColor3 = silentPage.Visible and ACCENT or OFF
-    aimbotTab.BackgroundColor3 = aimbotPage.Visible and ACCENT or OFF
-end
-table.insert(accentRefreshers, refreshAimTabs)
-silentTab.MouseButton1Click:Connect(function() silentPage.Visible = true; aimbotPage.Visible = false; refreshAimTabs() end)
-aimbotTab.MouseButton1Click:Connect(function() silentPage.Visible = false; aimbotPage.Visible = true; refreshAimTabs() end)
-
--- Silent aim -> silentAimVars
-checkbox(silentPage, "enabled", false, function(v) silentAimVars.enabled = v end)
-checkbox(silentPage, "manipulation", false, function(v) silentAimVars.manipulation = v end)
-checkbox(silentPage, "closest part", true, function(v) silentAimVars.closestPart = v end)
-checkbox(silentPage, "visualize", false, function(v) silentAimVars.visualize = v end)
-checkbox(silentPage, "show fov", true, function(v) silentAimVars.showFov = v end)
-slider(silentPage, "radius", 1, 300, 15, "px", function(v) silentAimVars.radius = v end)
-slider(silentPage, "hit chance", 0, 100, 100, "%", function(v) silentAimVars.hitChance = v end)
-
--- Aimbot -> aimbotVars
-checkbox(aimbotPage, "enabled", false, function(v) aimbotVars.enabled = v end)
-checkbox(aimbotPage, "smooth aim", false, function(v) aimbotVars.smooth = v end)
-checkbox(aimbotPage, "visible only", true, function(v) aimbotVars.visibleOnly = v end)
-slider(aimbotPage, "FOV", 1, 300, 15, "px", function(v) aimbotVars.fov = v end)
-slider(aimbotPage, "smoothing", 1, 100, 50, "%", function(v) aimbotVars.smoothing = v end)
-dropdown(aimbotPage, "target part", { "Head", "UpperTorso", "LowerTorso", "HumanoidRootPart" }, 1,
-    function(opt) silentAimVars.targeting.selectedTargetPart = opt end)
-
-local targeting = section(left, "targeting", 390)
-checkbox(targeting, "visible only", true)
-checkbox(targeting, "ignore protected", false)
-checkbox(targeting, "disable on flash", false)
-checkbox(targeting, "limit distance", false)
-slider(targeting, "reaction time", 0, 500, 0, "ms")
-slider(targeting, "forget time", 0, 10, 0, "s")
-dropdown(targeting, "target part", { "Head", "UpperTorso", "LowerTorso", "HumanoidRootPart" }, 1,
-    function(opt) silentAimVars.targeting.selectedTargetPart = opt end)
-dropdown(targeting, "closest part blacklist", { "HumanoidRootPart", "UpperTorso", "Head", "None" }, 1)
-
-local trigger = section(right, "triggerbot", 105)
-checkbox(trigger, "enabled", false)
-dropdown(trigger, "mode", {"Equa", "Default"}, 1)
-
-local weapons = section(right, "weapons", 245)
-checkbox(weapons, "no spread", false)
-checkbox(weapons, "full auto", false)
-checkbox(weapons, "always backstab", true)
-dropdown(weapons, "grenade options", { "...", "default", "custom" }, 1)
-slider(weapons, "firerate", 0, 100, 100, "%")
-
--- Ragebot -> ragebotVars / characterVars
-local rage = section(right, "ragebot", 315)
-checkbox(rage, "enabled", false, function(v) ragebotVars.enabled = v end)
-checkbox(rage, "void spam", false, function(v) characterVars.voidSpam = v end)
-slider(rage, "shoot attempts", 1, 10, 1, "x", function(v) ragebotVars.shootAttempts = v end)
-dropdown(rage, "attack mode", {"gun", "melee", "mixed"}, 1)
-dropdown(rage, "preferred weapon", {"primary", "secondary"}, 1)
-dropdown(rage, "settings", {"...", "default"}, 1)
-
-local priority = section(right, "priority", 125)
-dropdown(priority, "priority mode", { "closest", "visible", "lowest health" }, 1)
-checkbox(priority, "prioritize selected", false)
-
--- WORLD
-local worldPanel = section(columns.world[1], "world", 220)
-checkbox(worldPanel, "enabled", false)
-checkbox(worldPanel, "remove fog", false)
-checkbox(worldPanel, "fullbright", false)
-checkbox(worldPanel, "show objects", false)
-slider(worldPanel, "brightness", 0, 100, 50, "%")
-
-local environment = section(columns.world[2], "environment", 180)
-checkbox(environment, "show environment panel", false)
-dropdown(environment, "world preset", { "default", "dark", "bright" }, 1)
-note(environment, "Controles visuales. No modifican el mundo del juego.")
-
--- ESP -> espVars
-local espPanel = section(columns.esp[1], "player esp", 230)
-checkbox(espPanel, "enabled", false, function(v) espVars.enabled = v end)
-checkbox(espPanel, "box", false, function(v) espVars.boxes = v end)
-checkbox(espPanel, "skeleton", false, function(v) espVars.skeleton = v end)
-checkbox(espPanel, "healthbar", false, function(v) espVars.healthbar = v end)
-checkbox(espPanel, "name", false, function(v) espVars.names = v end)
-checkbox(espPanel, "distance", false, function(v) espVars.distance = v end)
-
-local espFilters = section(columns.esp[2], "filters", 190)
-checkbox(espFilters, "visible only", false)
-checkbox(espFilters, "ignore teammates", false)
-checkbox(espFilters, "show NPCs", false)
-dropdown(espFilters, "box style", {"normal", "corner"}, 1)
-dropdown(espFilters, "text style", {"default", "compact"}, 1)
-
--- VISUALS
-local visualPanel = section(columns.visuals[1], "visuals", 230)
-checkbox(visualPanel, "show FOV circle", false)
-checkbox(visualPanel, "crosshair", false)
-checkbox(visualPanel, "tracers", false)
-checkbox(visualPanel, "show labels", false)
-slider(visualPanel, "crosshair size", 1, 30, 8, "px")
-
-local visualOptions = section(columns.visuals[2], "display options", 180)
-dropdown(visualOptions, "style", {"default", "minimal"}, 1)
-checkbox(visualOptions, "outline", true)
-checkbox(visualOptions, "show status", false)
-note(visualOptions, "Opciones de apariencia de la interfaz.")
-
--- CHARACTER -> characterVars
-local movement = section(columns.character[1], "character", 235)
-checkbox(movement, "movement options", false)
-checkbox(movement, "fly toggle", false, function(v) characterVars.flyToggle = v end)
-checkbox(movement, "noclip toggle", false, function(v) characterVars.noclipToggle = v end)
-checkbox(movement, "infinite jump", false, function(v) characterVars.infiniteJump = v end)
-slider(movement, "movement speed", 16, 100, 16, "", function(v) characterVars.movementSpeed = v end)
-
-local characterSettings = section(columns.character[2], "character settings", 180)
-dropdown(characterSettings, "preset", { "default", "custom" }, 1)
-checkbox(characterSettings, "show status", false)
-note(characterSettings, "Los controles de movimiento son solo visuales.")
-
--- MISC
-local miscPanel = section(columns.misc[1], "misc", 190)
-checkbox(miscPanel, "show notifications", true)
-checkbox(miscPanel, "show status label", false)
-checkbox(miscPanel, "compact labels", false)
-dropdown(miscPanel, "interface mode", {"default", "classic"}, 1)
-
-local miscInfo = section(columns.misc[2], "information", 130)
-note(miscInfo, "Rio Premium UI")
-note(miscInfo, "RightShift: ocultar o mostrar la interfaz.")
-
--- SETTINGS
-local keyPanel = section(columns.settings[1], "interface settings", 190)
-local keybindButton
-keybindButton = actionButton(keyPanel, "toggle key: RightShift (click to change)", function()
-    listeningKey = true
-    keybindButton.Text = "Press any keyboard key..."
-end)
-actionButton(keyPanel, "Reset key to RightShift", function()
-    toggleKey = Enum.KeyCode.RightShift
-    listeningKey = false
-    keybindButton.Text = "toggle key: RightShift (click to change)"
-end)
-
-local colors = section(columns.settings[2], "interface color", 300)
-local presets = {
-    {name = "Purple", color = Color3.fromRGB(105, 48, 220)},
-    {name = "Blue", color = Color3.fromRGB(40, 120, 245)},
-    {name = "Red", color = Color3.fromRGB(225, 55, 70)},
-    {name = "Green", color = Color3.fromRGB(45, 190, 105)},
-    {name = "Gold", color = Color3.fromRGB(220, 165, 45)},
-    {name = "Pink", color = Color3.fromRGB(240, 80, 185)},
-}
-for _, preset in ipairs(presets) do
-    local button = create("TextButton", {
-        Size = UDim2.new(1, 0, 0, 31), BackgroundColor3 = preset.color, BorderSizePixel = 0,
-        Text = preset.name, TextColor3 = WHITE, Font = Enum.Font.Code, TextSize = 16,
-    }, colors)
-    button.MouseButton1Click:Connect(function() setAccentColor(preset.color) end)
-end
-
-for key, button in pairs(tabButtons) do
-    button.BackgroundColor3 = key == "main" and ACCENT or OFF
-    button.TextColor3 = key == "main" and WHITE or MUTED
-end
-
-UIS.InputBegan:Connect(function(input, processed)
-    if not gui.Parent then return end
-    if listeningKey then
-        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode ~= Enum.KeyCode.Unknown then
-            toggleKey = input.KeyCode
-            listeningKey = false
-            keybindButton.Text = "toggle key: " .. toggleKey.Name .. " (click to change)"
-        end
+    if state.ticks % 4096 ~= 0 then
         return
     end
-    if not processed and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == toggleKey then
-        main.Visible = not main.Visible
+
+    local now = os.clock()
+
+    if state.frame ~= schedulerFrame then
+        state.started = now
+        state.ticks = 0
+        state.frame = schedulerFrame
     end
-end)
+    if state.ticks > 50000000 or now - state.started > 20 then
+        control.error = 'Execution made no progress: loop ' .. tostring(id)
+        control.status = 'error'
+        control.stopped = true
 
--- ============================================================
--- LOGICA CORREGIDA (SILENT AIM FLUIDO + ESP FUERZA ROJO)
--- ============================================================
-local Drawing = Drawing or getgenv().Drawing
-local espObjects = {}
-
--- Fuerza el ESP a estar activo internamente (Soluciona el bug de los botones de tu UI)
-if espVars then
-    espVars.enabled = true
-    espVars.boxes = true
-    espVars.color = Color3.fromRGB(255, 0, 0)
-end
-
--- FOV Circle Visual del Silent Aim
-local silentAimFovCircle = Drawing.new("Circle")
-silentAimFovCircle.Visible = false
-silentAimFovCircle.Thickness = 1
-silentAimFovCircle.Filled = false
-silentAimFovCircle.Transparency = 0.6
-silentAimFovCircle.Color = Color3.fromRGB(255, 255, 255)
-
-task.spawn(newcclosure(function()
-    while task.wait(0.01) do
-        if silentAimVars and silentAimVars.enabled and silentAimVars.showFov then
-            local mousePos = UserInputService:GetMouseLocation()
-            silentAimFovCircle.Visible = true
-            silentAimFovCircle.Position = Vector2.new(mousePos.X, mousePos.Y + 36)
-            silentAimFovCircle.Radius = silentAimVars.radius or 120
-        else
-            silentAimFovCircle.Visible = false
+        if heartbeatConnection then
+            heartbeatConnection:Disconnect()
         end
-    end
-end))
 
--- Funciones de escaneo de enemigos
-local function GetCharacter(player)
-    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
-        return player.Character
+        error(control.error, 0)
     end
-    return nil
+    if state.ticks > 0 and state.ticks % 262144 == 0 and coroutine.isyieldable() then
+        task.wait()
+
+        state.frame = schedulerFrame
+    end
 end
 
-local function IsEnemy(player)
-    return player ~= LocalPlayer and player.Team ~= nil and LocalPlayer.Team ~= nil and player.Team ~= LocalPlayer.Team
+local Native = {}
+local Backend = {}
+
+local function buildApplication()
+    local runtime = Backend.createRuntime()
+    local state = Backend.bindPrimitives(runtime)
+    local data = Backend.loadProgramData()
+
+    Backend.initialize(data)
+
+    return state[56](data[1], state[2])
+end
+local function runApplication()
+    local function traceback(err)
+        local text = tostring(err)
+
+        return debug and debug.traceback and debug.traceback(text, 2) or text
+    end
+
+    local ok, result = xpcall(function()
+        assert(type(getgenv) == 'function', 'This file needs a Roblox executor with getgenv.')
+        assert(game ~= nil and type(loadstring) == 'function', 'Roblox and loadstring are required.')
+        assert(type(buffer) == 'table' and type(bit32) == 'table', 'buffer and bit32 are required.')
+
+        heartbeatConnection = game:GetService('RunService').Heartbeat:Connect(function()
+            schedulerFrame += 1
+        end)
+
+        local entry = buildApplication()
+
+        return table.pack(entry(table.unpack(arguments, 1, arguments.n)))
+    end, traceback)
+
+    if not ok then
+        control.error = result
+        control.status = 'error'
+        control.stopped = true
+
+        if heartbeatConnection then
+            heartbeatConnection:Disconnect()
+        end
+
+        local failedLibrary = rawget(sharedEnv, 'Library')
+
+        if type(failedLibrary) == 'table' and failedLibrary ~= previousLibrary then
+            if type(failedLibrary.Signals) == 'table' then
+                for _, signal in failedLibrary.Signals do
+                    if typeof(signal) == 'RBXScriptConnection' then
+                        signal:Disconnect()
+                    end
+                end
+            end
+            if typeof(failedLibrary.ScreenGui) == 'Instance' then
+                failedLibrary.ScreenGui:Destroy()
+            end
+        end
+
+        sharedEnv.Library = previousLibrary
+        sharedEnv.Options = previousOptions
+        sharedEnv.Toggles = previousToggles
+        sharedEnv.UE_LOADED = previousLoaded
+
+        return control
+    end
+
+    control.status = 'entry_returned'
+    control.elapsed = os.clock() - control.started
+
+    local applicationLibrary = rawget(sharedEnv, 'Library')
+
+    if type(applicationLibrary) == 'table' and applicationLibrary ~= previousLibrary and typeof(applicationLibrary.ScreenGui) == 'Instance' then
+        applicationLibrary.ScreenGui.Destroying:Connect(function()
+            control.status = 'unloaded'
+            control.stopped = true
+
+            if heartbeatConnection then
+                heartbeatConnection:Disconnect()
+            end
+
+            sharedEnv.UE_LOADED = previousLoaded
+
+            if rawget(sharedEnv, 'Library') == applicationLibrary then
+                sharedEnv.Library = previousLibrary
+                sharedEnv.Options = previousOptions
+                sharedEnv.Toggles = previousToggles
+            end
+        end)
+    end
+
+    return control
 end
 
-local function GetClosestTarget()
-    local shortest = silentAimVars.radius or 120
-    local closestChar, closestPart
-    local mousePos = UserInputService:GetMouseLocation()
-    
-    for _, player in ipairs(Players:GetPlayers()) do
-        if IsEnemy(player) then
-            local char = GetCharacter(player)
-            local targetPartName = silentAimVars.targeting.selectedTargetPart or "Head"
-            if char and char:FindFirstChild(targetPartName) then
-                local part = char[targetPartName]
-                local screenPos, onScr = Camera:WorldToViewportPoint(part.Position)
-                if onScr then
-                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mousePos.X, mousePos.Y)).Magnitude
-                    if dist <= shortest then
-                        shortest = dist
-                        closestChar = char
-                        closestPart = part
+function Backend.initialize(data)
+    local root = data[1]
+    local opcodes, destinations, jumpOperands, constantValues, globalNames, memberKeys, sourceRegisters = root[3], root[4], root[5], root[7], root[8], root[9], root[10]
+
+    assert(opcodes[1] == 7 and jumpOperands[1] == 17364, 'Unexpected input version')
+    assert(opcodes[17366] == 213 and opcodes[17880] == 42, 'Application boundary changed')
+
+    -- Keep this standalone file from scheduling the old key-protected loader.
+    assert(opcodes[20172] == 213 and jumpOperands[20172] == 24
+        and globalNames[20172] == 'queue_on_teleport', 'Teleport boundary changed')
+    opcodes[20172] = 167
+    destinations[20172] = 24
+    rawset(constantValues, 20172, function() end)
+
+    opcodes[17366] = 7
+    jumpOperands[17366] = 20413
+    opcodes[20414] = 213
+    jumpOperands[20414] = 2
+
+    rawset(globalNames, 20414, 'os')
+
+    opcodes[20415] = 116
+    destinations[20415] = 2
+    sourceRegisters[20415] = 2
+
+    rawset(memberKeys, 20415, 'clock')
+
+    opcodes[20416] = 171
+    sourceRegisters[20416] = 2
+    opcodes[20417] = 7
+    jumpOperands[20417] = 2752
+    opcodes[20418] = 167
+    destinations[20418] = 12
+
+    rawset(constantValues, 20418, 9395)
+
+    local function integrityProduct(inputValue)
+        return (inputValue + 63) % 100 * (inputValue % 32)
+    end
+    local function integrityModulo(inputValue)
+        return 327 * inputValue % 10000
+    end
+    local function integrityOffset(inputValue)
+        return 3650 * inputValue % 7115 + 3 * inputValue
+    end
+
+    opcodes[20419] = 167
+    destinations[20419] = 5
+
+    rawset(constantValues, 20419, integrityProduct)
+
+    opcodes[20420] = 167
+    destinations[20420] = 4
+
+    rawset(constantValues, 20420, integrityModulo)
+
+    opcodes[20421] = 167
+    destinations[20421] = 3
+
+    rawset(constantValues, 20421, integrityOffset)
+
+    opcodes[20422] = 167
+    destinations[20422] = 11
+
+    rawset(constantValues, 20422, 964)
+
+    opcodes[20423] = 167
+    destinations[20423] = 6
+
+    rawset(constantValues, 20423, 'Frame')
+
+    opcodes[20424] = 167
+    destinations[20424] = 7
+
+    rawset(constantValues, 20424, 'OutlineColor')
+
+    opcodes[20425] = 167
+    destinations[20425] = 8
+
+    rawset(constantValues, 20425, 'BindableEvent')
+
+    opcodes[20426] = 167
+    destinations[20426] = 9
+
+    rawset(constantValues, 20426, false)
+
+    opcodes[20427] = 167
+    destinations[20427] = 10
+
+    rawset(constantValues, 20427, true)
+
+    opcodes[20428] = 7
+    jumpOperands[20428] = 1128
+    opcodes[17880] = 7
+    jumpOperands[17880] = 20417
+end
+function Native.library(captures)
+    local capture09 = captures[9]
+    local capture11 = captures[11]
+    local uiLibrary = captures[0]
+    local capture10 = captures[10]
+    local capture17 = captures[17]
+    local playersService = captures[22]
+    local capture12 = captures[12]
+    local capture19 = captures[19]
+    local textService = captures[18]
+    local userInputService = captures[6]
+    local capture08 = captures[8]
+    local capture14 = captures[14]
+    local capture02 = captures[2]
+    local teamsService = captures[21]
+    local contextActionService = captures[13]
+    local capture01 = captures[1]
+    local capture05 = captures[5]
+    local capture03 = captures[3]
+    local capture16 = captures[16]
+    local capture20 = captures[20]
+    local capture04 = captures[4]
+    local capture07 = captures[7]
+    local capture23 = captures[23]
+    local capture15 = captures[15]
+
+    return function()
+        capture08[3][capture08[2] ] = function()
+            local players = playersService:GetPlayers()
+
+            for index = 1, #players do
+                __step(5)
+
+                players[index] = players[index].Name
+            end
+
+            table.sort(players, function(value028, value029)
+                return value028 < value029
+            end)
+
+            return players
+        end
+        capture11[3][capture11[2] ] = function()
+            local teams = teamsService:GetTeams()
+
+            for index2 = 1, #teams do
+                __step(6)
+
+                teams[index2] = teams[index2].Name
+            end
+
+            table.sort(teams, function(value032, value033)
+                return value032 < value033
+            end)
+
+            return teams
+        end
+
+        function uiLibrary:SafeCallback(callback, ...)
+            if not callback then
+                return
+            end
+            if not uiLibrary.NotifyOnError then
+                return callback(...)
+            end
+
+            local success, resultOrError = pcall(callback, ...)
+
+            if not success then
+                local matchStart, matchEnd = resultOrError:find(':%d+: ')
+
+                if not matchEnd then
+                    return uiLibrary:Notify(resultOrError)
+                end
+
+                return uiLibrary:Notify(resultOrError:sub(matchEnd + 1), 3)
+            end
+        end
+        function uiLibrary:AttemptSave()
+            if uiLibrary.SaveManager then
+                uiLibrary.SaveManager:Save()
+            end
+        end
+        function uiLibrary:Create(classOrInstance, properties)
+            local instance3 = classOrInstance
+
+            if typeof(classOrInstance) == 'string' then
+                instance3 = Instance.new(classOrInstance)
+            end
+
+            for key, value in next, properties do
+                __step(7)
+
+                local success2, resultOrError2 = pcall(function()
+                    instance3[key] = value
+                end)
+
+                if not success2 then
+                    capture17(resultOrError2)
+                end
+            end
+
+            return instance3
+        end
+        function uiLibrary:EnableFlagCopying(enabled)
+            uiLibrary.FlagCopying = enabled
+        end
+        function uiLibrary:ApplyTextStroke(label)
+            label.TextStrokeTransparency = 1
+
+            return uiLibrary:Create('UIStroke', {
+                Color = Color3.new(0, 0, 0),
+                Thickness = 1,
+                LineJoinMode = Enum.LineJoinMode.Miter,
+                Parent = label,
+            })
+        end
+        function uiLibrary:CreateLabel(properties2, isHud)
+            local textLabel = uiLibrary:Create('TextLabel', {
+                BackgroundTransparency = 1,
+                Font = uiLibrary.Font,
+                TextColor3 = uiLibrary.FontColor,
+                TextSize = 16,
+                TextStrokeTransparency = 0,
+            })
+
+            uiLibrary:ApplyTextStroke(textLabel)
+            uiLibrary:AddToRegistry(textLabel, {
+                TextColor3 = 'FontColor',
+            }, isHud)
+
+            return uiLibrary:Create(textLabel, properties2)
+        end
+        function uiLibrary:MakeDraggable(frame, dragHeight, respectDragLock)
+            frame.Active = true
+
+            frame.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    if respectDragLock == true and uiLibrary.CantDragForced == true then
+                        return
+                    end
+
+                    local dragOffset = Vector2.new(capture03.X - frame.AbsolutePosition.X, capture03.Y - frame.AbsolutePosition.Y)
+
+                    if dragOffset.Y > (dragHeight or 40) then
+                        return
+                    end
+
+                    while userInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+                        __step(8)
+
+                        frame.Position = UDim2.new(0, capture03.X - dragOffset.X + frame.Size.X.Offset * frame.AnchorPoint.X, 0, capture03.Y - dragOffset.Y + frame.Size.Y.Offset * frame.AnchorPoint.Y)
+
+                        capture04:Wait()
+                    end
+                end
+            end)
+        end
+
+        local screenGui = Instance.new('ScreenGui', capture10)
+
+        function uiLibrary:MakeDraggableOutline(frame2, dragHeight2, respectDragLock2)
+            frame2.Active = true
+
+            frame2.InputBegan:Connect(function(input2)
+                if input2.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if respectDragLock2 == true and uiLibrary.CantDragForced == true then
+                        return
+                    end
+
+                    local dragOffset2 = Vector2.new(capture03.X - frame2.AbsolutePosition.X, capture03.Y - frame2.AbsolutePosition.Y)
+
+                    if dragOffset2.Y > (dragHeight2 or 40) then
+                        return
+                    end
+
+                    local value070 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                        Parent = screenGui,
+                        AnchorPoint = frame2.AnchorPoint,
+                        BackgroundTransparency = 1,
+                        Size = frame2.Size,
+                        Position = frame2.Position,
+                    })
+                    local uIStroke = uiLibrary:Create('UIStroke', {
+                        Parent = value070,
+                        Color = uiLibrary.AccentColor or Color3.new(0, 0, 0),
+                    })
+
+                    uiLibrary.IsDragging = true
+
+                    while(userInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)) do
+                        __step(9)
+
+                        value070.Position = UDim2.new(0, capture03.X - dragOffset2.X + frame2.Size.X.Offset * frame2.AnchorPoint.X, 0, capture03.Y - dragOffset2.Y + frame2.Size.Y.Offset * frame2.AnchorPoint.Y)
+                        uIStroke.Color = uiLibrary.AccentColor or Color3.new(0, 0, 0)
+
+                        capture04:Wait()
+                    end
+
+                    frame2.Position = value070.Position
+
+                    value070:Destroy()
+
+                    uiLibrary.IsDragging = false
+                end
+                if input2.UserInputType == Enum.UserInputType.Touch then
+                    if respectDragLock2 == true and uiLibrary.CantDragForced == true then
+                        return
+                    end
+
+                    local value072 = Vector2.new(input2.Position.X - frame2.AbsolutePosition.X, input2.Position.Y - frame2.AbsolutePosition.Y)
+
+                    if value072.Y > (dragHeight2 or 40) then
+                        return
+                    end
+
+                    local value073 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                        Parent = screenGui,
+                        AnchorPoint = frame2.AnchorPoint,
+                        BackgroundTransparency = 1,
+                        Size = frame2.Size,
+                        Position = frame2.Position,
+                    })
+                    local uIStroke2 = uiLibrary:Create('UIStroke', {
+                        Parent = value073,
+                        Color = uiLibrary.AccentColor or Color3.new(0, 0, 0),
+                    })
+
+                    uiLibrary.IsDragging = true
+
+                    local value075 = true
+                    local value076
+
+                    value076 = input2.Changed:Connect(function()
+                        if input2.UserInputState == Enum.UserInputState.End then
+                            value075 = false
+                        end
+                    end)
+
+                    while value075 do
+                        __step(10)
+
+                        value073.Position = UDim2.new(0, input2.Position.X - value072.X + frame2.Size.X.Offset * frame2.AnchorPoint.X, 0, input2.Position.Y - value072.Y + frame2.Size.Y.Offset * frame2.AnchorPoint.Y)
+                        uIStroke2.Color = uiLibrary.AccentColor or Color3.new(0, 0, 0)
+
+                        capture04:Wait()
+                    end
+
+                    frame2.Position = value073.Position
+
+                    if value076 then
+                        value076:Disconnect()
+                    end
+
+                    value073:Destroy()
+
+                    uiLibrary.IsDragging = false
+                end
+            end)
+        end
+        function uiLibrary:MakeDraggableUsingParent(handle, frame3, dragHeight3, respectDragLock3)
+            handle.Active = true
+
+            if uiLibrary.IsMobile == false then
+                handle.InputBegan:Connect(function(input3)
+                    if input3.UserInputType == Enum.UserInputType.MouseButton1 or input3.UserInputType == Enum.UserInputType.Touch then
+                        if respectDragLock3 == true and uiLibrary.CantDragForced == true then
+                            return
+                        end
+
+                        local dragOffset3 = Vector2.new(capture03.X - frame3.AbsolutePosition.X, capture03.Y - frame3.AbsolutePosition.Y)
+
+                        if dragOffset3.Y > (dragHeight3 or 40) then
+                            return
+                        end
+
+                        while userInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+                            __step(11)
+
+                            frame3.Position = UDim2.new(0, capture03.X - dragOffset3.X + frame3.Size.X.Offset * frame3.AnchorPoint.X, 0, capture03.Y - dragOffset3.Y + frame3.Size.Y.Offset * frame3.AnchorPoint.Y)
+
+                            capture04:Wait()
+                        end
+                    end
+                end)
+            else
+                uiLibrary:MakeDraggable(frame3, dragHeight3, respectDragLock3)
+            end
+        end
+        function uiLibrary:MakeResizable(value085, value086)
+            value085.Active = true
+
+            local value087 = 25
+            local value088 = 0.5
+            local value089 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                SizeConstraint = Enum.SizeConstraint.RelativeXX,
+                BackgroundColor3 = Color3.new(0, 0, 0),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                Size = UDim2.new(0, 30, 0, 30),
+                Position = UDim2.new(1, -30, 1, -30),
+                Visible = true,
+                ClipsDescendants = true,
+                ZIndex = 1,
+                Parent = value085,
+            })
+            local imageButton = uiLibrary:Create('ImageButton', {
+                BackgroundColor3 = uiLibrary.AccentColor,
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                Size = UDim2.new(2, 0, 2, 0),
+                Position = UDim2.new(1, -30, 1, -30),
+                ZIndex = 2,
+                Parent = value089,
+            })
+            local uICorner = uiLibrary:Create('UICorner', {
+                CornerRadius = UDim.new(0.5, 0),
+                Parent = imageButton,
+            })
+
+            uiLibrary:AddToRegistry(imageButton, {
+                BackgroundColor3 = 'AccentColor',
+            })
+
+            value089.Size = UDim2.fromOffset(value087, value087)
+            value089.Position = UDim2.new(1, -value087, 1, -value087)
+            value086 = value086 or uiLibrary.MinSize
+
+            local value092
+            local value093, uIStroke3 = nil, uiLibrary:Create('UIStroke', {
+                Color = uiLibrary.AccentColor or Color3.new(0, 0, 0),
+            })
+
+            uIStroke3.Color = uiLibrary.AccentColor or Color3.new(0, 0, 0)
+
+            local function value095(value096)
+                imageButton.Position = UDim2.new()
+                imageButton.Size = UDim2.new(2, 0, 2, 0)
+                imageButton.Parent = value089
+                imageButton.BackgroundTransparency = value096
+                uICorner.Parent = imageButton
+                value092 = nil
+
+                if value093 then
+                    uIStroke3.Parent = nil
+                    value085.Size = value093.Size
+
+                    value093:Destroy()
+                end
+            end
+
+            if uiLibrary.IsMobile ~= true then
+                imageButton.MouseButton1Down:Connect(function()
+                    if value092 then
+                        return
+                    end
+
+                    value092 = Vector2.new(capture03.X - (value085.AbsolutePosition.X + value085.AbsoluteSize.X), capture03.Y - (value085.AbsolutePosition.Y + value085.AbsoluteSize.Y))
+                    value093 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                        Parent = screenGui,
+                        AnchorPoint = value085.AnchorPoint,
+                        BackgroundTransparency = 1,
+                        Size = value085.Size,
+                        Position = value085.Position,
+                    })
+                    uIStroke3.Parent = value093
+                    imageButton.BackgroundTransparency = 1
+                    imageButton.Size = UDim2.fromOffset(uiLibrary.ScreenGui.AbsoluteSize.X, uiLibrary.ScreenGui.AbsoluteSize.Y)
+                    imageButton.Position = UDim2.new()
+                    uICorner.Parent = nil
+                    imageButton.Parent = uiLibrary.ScreenGui
+                end)
+                imageButton.MouseMoved:Connect(function()
+                    if not value092 then
+                        return
+                    end
+
+                    local value097 = Vector2.new(capture03.X - value092.X, capture03.Y - value092.Y)
+                    local value098 = Vector2.new(math.clamp(value097.X - value085.AbsolutePosition.X, value086.X, math.huge), math.clamp(value097.Y - value085.AbsolutePosition.Y, value086.Y, math.huge))
+
+                    value093.Size = UDim2.fromOffset(value098.X, value098.Y)
+                end)
+                imageButton.MouseButton1Up:Connect(function()
+                    value095(value088)
+                end)
+            else
+                imageButton.InputBegan:Connect(function(input4)
+                    if input4.UserInputType ~= Enum.UserInputType.Touch then
+                        return
+                    end
+                    if value092 then
+                        return
+                    end
+
+                    value092 = Vector2.new(input4.Position.X - (value085.AbsolutePosition.X + value085.AbsoluteSize.X), input4.Position.Y - (value085.AbsolutePosition.Y + value085.AbsoluteSize.Y))
+                    value093 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                        Parent = screenGui,
+                        AnchorPoint = value085.AnchorPoint,
+                        BackgroundTransparency = 1,
+                        Size = value085.Size,
+                        Position = value085.Position,
+                    })
+                    uIStroke3.Parent = value093
+                end)
+                imageButton.InputChanged:Connect(function(input5)
+                    if input5.UserInputType ~= Enum.UserInputType.Touch then
+                        return
+                    end
+                    if not value092 then
+                        return
+                    end
+
+                    local value101 = Vector2.new(input5.Position.X - value092.X, input5.Position.Y - value092.Y)
+                    local value102 = Vector2.new(math.clamp(value101.X - value085.AbsolutePosition.X, value086.X, math.huge), math.clamp(value101.Y - value085.AbsolutePosition.Y, value086.Y, math.huge))
+
+                    value093.Size = UDim2.fromOffset(value102.X, value102.Y)
+                end)
+                imageButton.InputEnded:Connect(function(input6)
+                    if input6.UserInputType ~= Enum.UserInputType.Touch then
+                        return
+                    end
+
+                    value095(value088)
+                end)
+            end
+
+            value095(value088)
+        end
+        function uiLibrary:AddToolTip(text, target)
+            local textWidth, textHeight = uiLibrary:GetTextBounds(text, uiLibrary.Font, 14)
+            local value109 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                BackgroundColor3 = uiLibrary.MainColor,
+                BorderColor3 = uiLibrary.OutlineColor,
+                Size = UDim2.fromOffset(textWidth + 5, textHeight + 4),
+                ZIndex = 100,
+                Parent = uiLibrary.ScreenGui,
+                Visible = false,
+            })
+            local value110 = uiLibrary:CreateLabel({
+                Position = UDim2.fromOffset(3, 1),
+                Size = UDim2.fromOffset(textWidth, textHeight),
+                TextSize = 14,
+                Text = text,
+                TextColor3 = uiLibrary.FontColor,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = value109.ZIndex + 1,
+                Parent = value109,
+            })
+
+            uiLibrary:AddToRegistry(value109, {
+                BackgroundColor3 = 'MainColor',
+                BorderColor3 = capture15[3][capture15[2] ],
+            })
+            uiLibrary:AddToRegistry(value110, {
+                TextColor3 = 'FontColor',
+            })
+
+            local value111 = false
+
+            target.MouseEnter:Connect(function()
+                if uiLibrary:MouseIsOverOpenedFrame() then
+                    return
+                end
+
+                value111 = true
+                value109.Position = UDim2.fromOffset(capture03.X + 15, capture03.Y + 12)
+                value109.Visible = true
+
+                while value111 do
+                    __step(12)
+                    capture19.Heartbeat:Wait()
+
+                    value109.Position = UDim2.fromOffset(capture03.X + 15, capture03.Y + 12)
+                end
+            end)
+            target.MouseLeave:Connect(function()
+                value111 = false
+                value109.Visible = false
+            end)
+
+            if capture12[3][capture12[2] ] then
+                capture12[3][capture12[2] ]:GetPropertyChangedSignal('Visible'):Connect(function()
+                    if capture12[3][capture12[2] ].Visible == false then
+                        value111 = false
+                        value109.Visible = false
+                    end
+                end)
+            end
+        end
+        function uiLibrary:OnHighlight(target2, styledInstance, highlightProperties, normalProperties, canHighlight)
+            local function value118()
+                local registryEntry = uiLibrary.RegistryMap[styledInstance]
+
+                for key2, value2 in next, normalProperties do
+                    __step(13)
+
+                    styledInstance[key2] = uiLibrary[value2] or value2
+
+                    if registryEntry and registryEntry.Properties[key2] then
+                        registryEntry.Properties[key2] = value2
+                    end
+                end
+            end
+            local function value122()
+                if canHighlight and not canHighlight() then
+                    value118()
+
+                    return
+                end
+
+                local registryEntry2 = uiLibrary.RegistryMap[styledInstance]
+
+                for key3, value3 in next, highlightProperties do
+                    __step(14)
+
+                    styledInstance[key3] = uiLibrary[value3] or value3
+
+                    if registryEntry2 and registryEntry2.Properties[key3] then
+                        registryEntry2.Properties[key3] = value3
+                    end
+                end
+            end
+
+            target2.MouseEnter:Connect(function()
+                value122()
+            end)
+            target2.MouseMoved:Connect(function()
+                value122()
+            end)
+            target2.MouseLeave:Connect(function()
+                value118()
+            end)
+        end
+        function uiLibrary:MouseIsOverOpenedFrame()
+            for key4, value4 in next, uiLibrary.OpenedFrames do
+                __step(15)
+
+                local absolutePosition, absoluteSize = key4.AbsolutePosition, key4.AbsoluteSize
+
+                if capture03.X >= absolutePosition.X and capture03.X <= absolutePosition.X + absoluteSize.X and capture03.Y >= absolutePosition.Y and capture03.Y <= absolutePosition.Y + absoluteSize.Y then
+                    return true
+                end
+            end
+        end
+        function uiLibrary:IsMouseOverFrame(frame4)
+            local absolutePosition2, absoluteSize2 = frame4.AbsolutePosition, frame4.AbsoluteSize
+
+            if capture03.X >= absolutePosition2.X and capture03.X <= absolutePosition2.X + absoluteSize2.X and capture03.Y >= absolutePosition2.Y and capture03.Y <= absolutePosition2.Y + absoluteSize2.Y then
+                return true
+            end
+        end
+        function uiLibrary:UpdateDependencyBoxes()
+            for key5, value5 in next, uiLibrary.DependencyBoxes do
+                __step(16)
+                value5:Update()
+            end
+        end
+        function uiLibrary:MapValue(inputValue, inputMin, inputMax, outputMin, outputMax)
+            return (1 - (inputValue - inputMin) / (inputMax - inputMin)) * outputMin + (inputValue - inputMin) / (inputMax - inputMin) * outputMax
+        end
+        function uiLibrary:GetTextBounds(text2, font, fontSize, bounds)
+            local textSize = textService:GetTextSize(text2, fontSize, font, bounds or Vector2.new(1920, 1080))
+
+            return textSize.X, textSize.Y
+        end
+        function uiLibrary:GetDarkerColor(color)
+            local hue, saturation, brightness = Color3.toHSV(color)
+
+            return Color3.fromHSV(hue, saturation, brightness / 1.5)
+        end
+
+        uiLibrary.AccentColorDark = uiLibrary:GetDarkerColor(uiLibrary.AccentColor)
+
+        function uiLibrary:AddToRegistry(instance, properties3, isHud2)
+            local registryIndex = #uiLibrary.Registry + 1
+            local registryEntry3 = {
+                Instance = instance,
+                Properties = properties3,
+                Idx = registryIndex,
+            }
+
+            table.insert(uiLibrary.Registry, registryEntry3)
+
+            uiLibrary.RegistryMap[instance] = registryEntry3
+
+            if isHud2 then
+                table.insert(uiLibrary.HudRegistry, registryEntry3)
+            end
+        end
+        function uiLibrary:RemoveFromRegistry(instance2)
+            local registryEntry4 = uiLibrary.RegistryMap[instance2]
+
+            if registryEntry4 then
+                for index3 = #uiLibrary.Registry, 1, -1 do
+                    __step(17)
+
+                    if uiLibrary.Registry[index3] == registryEntry4 then
+                        table.remove(uiLibrary.Registry, index3)
+                    end
+                end
+                for index4 = #uiLibrary.HudRegistry, 1, -1 do
+                    __step(18)
+
+                    if uiLibrary.HudRegistry[index4] == registryEntry4 then
+                        table.remove(uiLibrary.HudRegistry, index4)
+                    end
+                end
+
+                uiLibrary.RegistryMap[instance2] = nil
+            end
+        end
+        function uiLibrary:UpdateColorsUsingRegistry()
+            for key6, value6 in next, uiLibrary.Registry do
+                __step(19)
+
+                for key7, value7 in next, value6.Properties do
+                    __step(20)
+
+                    if typeof(value7) == 'string' then
+                        value6.Instance[key7] = uiLibrary[value7]
+                    elseif typeof(value7) == 'function' then
+                        value6.Instance[key7] = value7()
                     end
                 end
             end
         end
-    end
-    return closestChar, closestPart
-end
-
--- ===== HOOK DEFINITIVO (__namecall: Anti-Kick + Silent Aim Real Corregido) =====
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-    local method = getnamecallmethod and getnamecallmethod() or ""
-    
-    -- 1. Anti-Kick
-    if method == "Kick" then 
-        return nil 
-    end
-    
-    -- 2. Silent Aim real sin congelar la cámara
-    if silentAimVars and silentAimVars.enabled and (method == "FindPartOnRayWithIgnoreList" or method == "Raycast") and self == Workspace then
-        local args = {...}
-        local targetChar, targetPart = GetClosestTarget()
-        
-        if targetPart and math.random(100) <= (silentAimVars.hitChance or 100) then
-            if method == "FindPartOnRayWithIgnoreList" then
-                args[1] = Ray.new(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position).Unit * 5000)
-                return oldNamecall(self, unpack(args))
-            elseif method == "Raycast" then
-                args[1] = Camera.CFrame.Position
-                args[2] = (targetPart.Position - Camera.CFrame.Position).Unit * 5000
-                return oldNamecall(self, unpack(args))
-            end
+        function uiLibrary:GiveSignal(connection)
+            table.insert(uiLibrary.Signals, connection)
         end
-    end
-    
-    return oldNamecall(self, ...)
-end))
+        function uiLibrary:Unload()
+            for index5 = #uiLibrary.Signals, 1, -1 do
+                __step(21)
 
--- ===== BUCLE ESP MINIMALISTA ROJO AUTOMÁTICO =====
-local ESP_Boxes = {}
-RunService.RenderStepped:Connect(function()
-    for _, box in ipairs(ESP_Boxes) do
-        if box.__OBJ then box.__OBJ.Visible = false end
-    end
-    
-    if not (espVars and espVars.enabled) then return end
-    
-    for _, player in ipairs(Players:GetPlayers()) do
-        if IsEnemy(player) then
-            local char = GetCharacter(player)
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                local hrp = char.HumanoidRootPart
-                local root2D, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-                
-                if onScreen then
-                    local boxObj = nil
-                    for _, b in ipairs(ESP_Boxes) do
-                        if b.char == char then boxObj = b.__OBJ break end
-                    end
-                    
-                    if not boxObj then
-                        boxObj = Drawing.new("Square")
-                        boxObj.Thickness = 1
-                        boxObj.Color = Color3.fromRGB(255, 0, 0) -- Rojo Fijo
-                        boxObj.Filled = false
-                        boxObj.Transparency = 0.7
-                        table.insert(ESP_Boxes, {char = char, __OBJ = boxObj})
-                    end
-                    
-                    local ext = char:GetExtentsSize()
-                    boxObj.Size = Vector2.new(ext.X * 2.3, ext.Y * 2.6)
-                    boxObj.Position = Vector2.new(root2D.X - boxObj.Size.X / 2, root2D.Y - boxObj.Size.Y / 2)
-                    boxObj.Visible = true -- Forzado a true
+                local connection2 = table.remove(uiLibrary.Signals, index5)
+
+                connection2:Disconnect()
+            end
+
+            if uiLibrary.OnUnload then
+                uiLibrary.OnUnload()
+            end
+
+            contextActionService:UnbindAction('Freeze')
+            capture16:Destroy()
+            capture20:Destroy()
+            capture05:Destroy()
+            capture09:Destroy()
+        end
+        function uiLibrary:CreateEvent(eventName)
+            self.Events[eventName] = Instance.new(capture02[3][capture02[2] ])
+        end
+        function uiLibrary:FireEvent(eventName2, ...)
+            self.Events[eventName2]:Fire(...)
+        end
+        function uiLibrary:OnEvent(eventName3)
+            return self.Events[eventName3].Event
+        end
+        function uiLibrary:OnUnload(callback2)
+            uiLibrary.OnUnload = callback2
+        end
+
+        local inputCallbacks = {}
+
+        function uiLibrary:BindToInput(inputType, callback3)
+            inputCallbacks[inputType] = inputCallbacks[inputType] or {}
+
+            table.insert(inputCallbacks[inputType], callback3)
+        end
+
+        uiLibrary:GiveSignal(userInputService.InputBegan:Connect(function(input7, ...)
+            if not capture07[3][capture07[2] ] then
+                return
+            end
+
+            local value189 = inputCallbacks[input7.KeyCode] or inputCallbacks[input7.UserInputType]
+
+            if value189 then
+                for key8, value8 in pairs(value189)do
+                    __step(22)
+                    task.spawn(value8, input7, ...)
                 end
             end
+        end))
+
+        function uiLibrary:AddContextMenu(value193, value194)
+            local panel = {Visible = false}
+
+            panel.Options = {}
+            panel.Container = uiLibrary:Create('ImageButton', {
+                BorderColor3 = Color3.new(),
+                ZIndex = 14,
+                Visible = false,
+                Parent = capture09,
+                Image = '',
+                Active = false,
+                AutoButtonColor = false,
+            })
+            panel.Inner = uiLibrary:Create(capture01[3][capture01[2] ], {
+                BackgroundColor3 = uiLibrary.BackgroundColor,
+                BorderColor3 = uiLibrary.OutlineColor,
+                BorderMode = Enum.BorderMode.Inset,
+                Size = UDim2.fromScale(1, 1),
+                ZIndex = 15,
+                Parent = panel.Container,
+            })
+
+            uiLibrary:Create('UIListLayout', {
+                Name = 'Layout',
+                HorizontalAlignment = Enum.HorizontalAlignment.Left,
+                FillDirection = Enum.FillDirection.Vertical,
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Parent = panel.Inner,
+            })
+            uiLibrary:Create('UIPadding', {
+                Name = 'Padding',
+                PaddingLeft = UDim.new(0, 0),
+                Parent = panel.Inner,
+            })
+
+            local function value196()
+                panel.Container.Position = UDim2.fromOffset(value193.AbsolutePosition.X + value193.AbsoluteSize.X + 4, value193.AbsolutePosition.Y + 1)
+            end
+            local function value197()
+                local value198 = 60
+
+                for key9, value9 in next, panel.Inner:GetChildren()do
+                    __step(23)
+
+                    if value9:IsA('TextLabel') then
+                        value198 = math.max(value198, value9.TextBounds.X)
+                    end
+                end
+
+                panel.Container.Size = UDim2.fromOffset(value198 + 8, panel.Inner.Layout.AbsoluteContentSize.Y + 4)
+            end
+
+            local value201 = false
+
+            (value194 or value193).InputBegan:Connect(function(input8)
+                if input8.UserInputType == Enum.UserInputType.MouseButton1 and not uiLibrary:MouseIsOverOpenedFrame() then
+                    return panel:Hide()
+                elseif input8.UserInputType == Enum.UserInputType.MouseButton2 and not uiLibrary:MouseIsOverOpenedFrame() then
+                    return panel:Show()
+                end
+            end)
+            uiLibrary:BindToInput(Enum.UserInputType.MouseButton1, function()
+                if value201 and not uiLibrary:IsMouseOverFrame(panel.Container) then
+                    panel:Hide()
+                end
+            end)
+            uiLibrary:BindToInput(Enum.UserInputType.MouseButton2, function()
+                if value201 and not uiLibrary:IsMouseOverFrame(panel.Container) and not uiLibrary:IsMouseOverFrame(value193) then
+                    panel:Hide()
+                end
+            end)
+            task.spawn(value196)
+            task.spawn(value197)
+            uiLibrary:AddToRegistry(panel.Inner, {
+                BackgroundColor3 = 'BackgroundColor',
+                BorderColor3 = capture15[3][capture15[2] ],
+            })
+
+            function panel:Show()
+                value196()
+                value197()
+
+                value201 = true
+
+                for key10, value10 in next, uiLibrary.OpenedFrames do
+                    __step(24)
+
+                    if key10.Name == 'Color' then
+                        key10.Visible = false
+                        uiLibrary.OpenedFrames[key10] = nil
+                    end
+                end
+
+                self.Container.Visible = true
+                uiLibrary.OpenedFrames[panel.Container] = true
+            end
+            function panel:Hide()
+                value201 = false
+                self.Container.Visible = false
+
+                task.wait()
+
+                uiLibrary.OpenedFrames[panel.Container] = nil
+            end
+            function panel:AddOption(text3, callback4)
+                if type(callback4) ~= 'function' then
+                    callback4 = function() end
+                end
+
+                local value210 = uiLibrary:CreateLabel({
+                    Active = false,
+                    Size = UDim2.new(1, 0, 0, 15),
+                    TextSize = 13,
+                    Text = text3,
+                    ZIndex = 16,
+                    Parent = self.Inner,
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                })
+
+                uiLibrary:OnHighlight(value210, value210, {
+                    TextColor3 = 'AccentColor',
+                }, {
+                    TextColor3 = 'FontColor',
+                })
+                value210.InputBegan:Connect(function(input9)
+                    if input9.UserInputType ~= Enum.UserInputType.MouseButton1 then
+                        return
+                    end
+
+                    callback4()
+                end)
+
+                return value210
+            end
+
+            return panel
         end
-    end
-end)
 
--- Velocidad
-task.spawn(newcclosure(function()
-    while task.wait(0.05) do
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChildOfClass("Humanoid") and characterVars.movementSpeed then
-            char:FindFirstChildOfClass("Humanoid").WalkSpeed = characterVars.movementSpeed
+        uiLibrary:GiveSignal(capture09.DescendantRemoving:Connect(function(value212)
+            if capture07[3][capture07[2] ] and uiLibrary.RegistryMap[value212] then
+                uiLibrary:RemoveFromRegistry(value212)
+            end
+        end))
+
+        function uiLibrary:SetWatermarkVisibility(visible)
+            uiLibrary.Watermark.Visible = visible
         end
-    end
-end))
+        function uiLibrary:SetWatermark(text4)
+            local textWidth2, textHeight2 = uiLibrary:GetTextBounds(text4, uiLibrary.Font, 14)
 
--- Anti-index viejo (Opcional por compatibilidad)
-local oldIndex
-oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
-    return oldIndex(self, key)
-end))
+            uiLibrary.Watermark.Size = UDim2.new(0, textWidth2 + 15, 0, textHeight2 * 1.5 + 3)
+            uiLibrary.WatermarkText.Text = text4
+        end
 
-pcall(function()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Rio Premium UI", Text = "Interface loaded", Duration = 3,
-    })
-end)
+        local value219 = {
+            BarPosition = {
+                Top = UDim2.new(0, -1, 0, 0),
+                Left = UDim2.new(0, -1, 0, -1),
+                Right = UDim2.new(1, -2, 0, -1),
+                Bottom = UDim2.new(0, -1, 1, -2),
+            },
+            BarSize = {
+                Top = UDim2.new(1, 3, 0, 2),
+                Left = UDim2.new(0, 3, 1, 2),
+                Right = UDim2.new(0, 3, 1, 2),
+                Bottom = UDim2.new(1, 3, 0, 2),
+            },
+        }
+        local notificationStyle = uiLibrary.NotificationStyle
+        local charFn, maxFn = string.char, math.max
+        local value223 = function()
+            local overrideColor = notificationStyle.OverrideColor
 
-print("Rio Premium UI: Lógica e inyecciones corregidas al 100%.")
+            if overrideColor then
+                return overrideColor()
+            end
+
+            return uiLibrary.MainColor, uiLibrary.AccentColor, uiLibrary.OutlineColor, uiLibrary.FontColor
+        end
+        local value225
+
+        do
+            local value226 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                BorderColor3 = Color3.new(0, 0, 0),
+                Position = UDim2.new(0, 100, 0, 10),
+                ClipsDescendants = true,
+                ZIndex = 100,
+            })
+            local value227 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                BorderMode = Enum.BorderMode.Inset,
+                Size = UDim2.new(1, 0, 1, 0),
+                ZIndex = 101,
+                Parent = value226,
+                Name = 'inner',
+            })
+            local value228 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                BackgroundColor3 = Color3.new(1, 1, 1),
+                BorderSizePixel = 0,
+                Position = UDim2.new(0, 1, 0, 1),
+                Size = UDim2.new(1, -2, 1, -2),
+                ZIndex = 102,
+                Parent = value227,
+                Name = 'inner',
+            })
+            local uIGradient = uiLibrary:Create('UIGradient', {
+                Rotation = -90,
+                Parent = value228,
+            })
+            local value230 = uiLibrary:CreateLabel({
+                Position = UDim2.new(0, 4, 0, 0),
+                Size = UDim2.new(1, -4, 1, 0),
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextSize = 14,
+                ZIndex = 103,
+                Name = 'label',
+                Parent = value228,
+            })
+            local value231 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                BorderSizePixel = 0,
+                ZIndex = 104,
+                Name = 'bar',
+                Parent = value226,
+            })
+
+            value225 = value226
+        end
+
+        function uiLibrary:CreatePopout(settings)
+            if type(settings.Title) ~= 'string' then
+                settings.Title = 'No title'
+            end
+            if typeof(settings.Position) ~= 'UDim2' then
+                settings.Position = UDim2.fromOffset(175, 50)
+            end
+
+            local screenGui2 = Instance.new('ScreenGui')
+
+            capture23(screenGui2)
+
+            screenGui2.ZIndexBehavior = Enum.ZIndexBehavior.Global
+            screenGui2.Parent = capture10
+            screenGui2.DisplayOrder = (settings.ZIndex or 0) + 19
+
+            if settings.Center then
+                settings.AnchorPoint = Vector2.new(0.5, 0.5)
+                settings.Position = UDim2.fromScale(0.5, 0.5)
+            end
+
+            local popout = {}
+            local value236 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                AnchorPoint = settings.AnchorPoint,
+                BackgroundColor3 = Color3.new(0, 0, 0),
+                BorderSizePixel = 0,
+                Position = settings.Position,
+                Size = UDim2.fromOffset(settings.Size.X, settings.Size.Y),
+                Visible = settings.AutoShow,
+                ZIndex = 1,
+                Parent = screenGui2,
+            })
+
+            if not settings.RemoveTopbar then
+                uiLibrary:MakeDraggableOutline(value236, 25)
+            end
+
+            local value237 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                BackgroundColor3 = uiLibrary.MainColor,
+                BorderColor3 = uiLibrary.OutlineColor,
+                BorderMode = Enum.BorderMode.Inset,
+                Position = UDim2.new(0, 1, 0, 1),
+                Size = UDim2.new(1, -2, 1, -2),
+                ZIndex = 1,
+                Parent = value236,
+            })
+
+            uiLibrary:AddToRegistry(value237, {
+                BackgroundColor3 = 'MainColor',
+                BorderColor3 = capture15[3][capture15[2] ],
+            })
+
+            if not settings.RemoveTopbar then
+                local value238 = uiLibrary:CreateLabel({
+                    Position = UDim2.new(0, 0, 0, 0),
+                    Size = UDim2.new(1, 0, 0, 25),
+                    Text = settings.Title or '',
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    ZIndex = 1,
+                    Font = uiLibrary.Font,
+                    Parent = value237,
+                })
+                local textLabel2 = uiLibrary:Create('TextLabel', {
+                    BackgroundTransparency = 1,
+                    Font = uiLibrary.Font,
+                    TextColor3 = uiLibrary.AccentColor,
+                    TextSize = 16,
+                    TextStrokeTransparency = 0,
+                    Position = UDim2.new(0, -8, 0, 0),
+                    Size = UDim2.new(1, 0, 0, 25),
+                    Text = settings.Version or '',
+                    RichText = true,
+                    TextXAlignment = Enum.TextXAlignment.Right,
+                    ZIndex = 1,
+                    Parent = value237,
+                })
+
+                uiLibrary:AddToRegistry(textLabel2, {
+                    TextColor3 = 'AccentColor',
+                })
+            end
+
+            local value240 = settings.RemoveTopbar and 8 or 25
+            local value241 = settings.RemoveTopbar and -16 or -33
+            local value242 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                BackgroundColor3 = uiLibrary.BackgroundColor,
+                BorderColor3 = uiLibrary.OutlineColor,
+                Position = UDim2.new(0, 8, 0, value240),
+                Size = UDim2.new(1, -16, 1, value241),
+                ZIndex = 1,
+                Parent = value237,
+            })
+
+            uiLibrary:AddToRegistry(value242, {
+                BackgroundColor3 = 'BackgroundColor',
+                BorderColor3 = capture15[3][capture15[2] ],
+            })
+
+            local value243 = uiLibrary:Create(capture01[3][capture01[2] ], {
+                BackgroundColor3 = uiLibrary.BackgroundColor,
+                BorderColor3 = Color3.new(0, 0, 0),
+                BorderMode = Enum.BorderMode.Inset,
+                Position = UDim2.new(0, 0, 0, 0),
+                Size = UDim2.new(1, 0, 1, 0),
+                ZIndex = 1,
+                Parent = value242,
+            })
+
+            uiLibrary:AddToRegistry(value243, {
+                BackgroundColo... (Tiempo restante: 14 MB)
