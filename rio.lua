@@ -112,7 +112,91 @@ create("UISizeConstraint", {
     MinSize = Vector2.new(580, 620),
     MaxSize = Vector2.new(680, 800),
 }, main)
+-- Bolita flotante RioRage
+local floatButton = create("TextButton", {
+    Name = "RioRageFloat",
+    AnchorPoint = Vector2.new(1, 0.5),
+Position = UDim2.new(0.5, -330, 0.5, 0),
+    Size = UDim2.fromOffset(62, 62),
+    BackgroundColor3 = ACCENT,
+    BorderSizePixel = 0,
+    Text = "RioRage",
+    TextColor3 = Color3.fromRGB(0, 0, 0),
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    AutoButtonColor = true,
+    Active = true,
+    ZIndex = 50,
+}, gui)
 
+create("UICorner", {
+    CornerRadius = UDim.new(1, 0),
+}, floatButton)
+
+local floatStroke = create("UIStroke", {
+    Color = Color3.fromRGB(30, 30, 30),
+    Thickness = 1.5,
+}, floatButton)
+
+registerAccent(floatStroke, "Color")
+
+-- Arrastrar o pulsar la bolita
+local draggingFloat = false
+local movedFloat = false
+local pointerStart
+local buttonStart
+
+floatButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        draggingFloat = true
+        movedFloat = false
+        pointerStart = input.Position
+        buttonStart = floatButton.Position
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if not draggingFloat then
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        local delta = input.Position - pointerStart
+
+        if delta.Magnitude > 5 then
+            movedFloat = true
+        end
+
+        if movedFloat then
+            floatButton.Position = UDim2.new(
+                buttonStart.X.Scale,
+                buttonStart.X.Offset + delta.X,
+                buttonStart.Y.Scale,
+                buttonStart.Y.Offset + delta.Y
+            )
+        end
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if not draggingFloat then
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        draggingFloat = false
+
+        if not movedFloat and gui.Parent then
+            main.Visible = not main.Visible
+        end
+    end
+end)
 local outline = create("UIStroke", {
     Color = ACCENT,
     Thickness = 1,
@@ -127,15 +211,17 @@ local header = create("Frame", {
     BorderSizePixel = 0,
 }, main)
 
-local title = create("TextLabel", {
-    Position = UDim2.fromOffset(14, 0),
-    Size = UDim2.new(1, -100, 1, 0),
+local gameLabel = create("TextLabel", {
+    Name = "GameLabel",
+    AnchorPoint = Vector2.new(1, 0.5),
+    Position = UDim2.new(1, -50, 0.5, 0),
+    Size = UDim2.fromOffset(100, 32),
     BackgroundTransparency = 1,
-    Text = "Rio Premium UI",
-    Font = Enum.Font.Code,
+    Text = "Rivals",
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    Font = Enum.Font.GothamBold,
     TextSize = 20,
-    TextColor3 = WHITE,
-    TextXAlignment = Enum.TextXAlignment.Left,
+    TextXAlignment = Enum.TextXAlignment.Right,
 }, header)
 
 local close = create("TextButton", {
@@ -550,14 +636,125 @@ end
 local left = columns.main[1]
 local right = columns.main[2]
 
-local silent = section(left, "silent aim", 292)
-checkbox(silent, "enabled", false)
-checkbox(silent, "manipulation", false)
-checkbox(silent, "closest part", true)
-checkbox(silent, "visualize", false)
-checkbox(silent, "show fov", false)
-slider(silent, "radius", 1, 300, 15, "px")
-slider(silent, "hit chance", 0, 100, 100, "%")
+-- Panel dividido: silent aim / aimbot
+local aimPanel = create("Frame", {
+    Name = "AimSettingsTabs",
+    Size = UDim2.new(1, -5, 0, 292),
+    BackgroundColor3 = PANEL,
+    BorderSizePixel = 1,
+    BorderColor3 = Color3.fromRGB(48, 48, 52),
+}, left)
+
+local aimTop = create("Frame", {
+    Size = UDim2.new(1, 0, 0, 31),
+    BackgroundColor3 = BG,
+    BorderSizePixel = 0,
+}, aimPanel)
+
+local aimLine = create("Frame", {
+    Size = UDim2.new(1, 0, 0, 2),
+    BackgroundColor3 = ACCENT,
+    BorderSizePixel = 0,
+}, aimTop)
+
+registerAccent(aimLine, "BackgroundColor3")
+
+local silentTab = create("TextButton", {
+    Name = "SilentAimTab",
+    Size = UDim2.new(0.5, 0, 1, 0),
+    BackgroundColor3 = ACCENT,
+    BorderSizePixel = 0,
+    Text = "silent aim",
+    TextColor3 = WHITE,
+    Font = Enum.Font.Code,
+    TextSize = 16,
+}, aimTop)
+
+local aimbotTab = create("TextButton", {
+    Name = "AimbotTab",
+    Position = UDim2.new(0.5, 0, 0, 0),
+    Size = UDim2.new(0.5, 0, 1, 0),
+    BackgroundColor3 = OFF,
+    BorderSizePixel = 0,
+    Text = "aimbot",
+    TextColor3 = WHITE,
+    Font = Enum.Font.Code,
+    TextSize = 16,
+}, aimTop)
+
+local aimBody = create("Frame", {
+    Position = UDim2.fromOffset(8, 38),
+    Size = UDim2.new(1, -16, 1, -44),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+}, aimPanel)
+
+local silentPage = create("Frame", {
+    Name = "SilentAimPage",
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1,
+}, aimBody)
+
+local aimbotPage = create("Frame", {
+    Name = "AimbotPage",
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1,
+    Visible = false,
+}, aimBody)
+
+for _, page in ipairs({silentPage, aimbotPage}) do
+    create("UIListLayout", {
+        Padding = UDim.new(0, 3),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+    }, page)
+end
+
+local function refreshAimTabs()
+    silentTab.BackgroundColor3 =
+        silentPage.Visible and ACCENT or OFF
+
+    aimbotTab.BackgroundColor3 =
+        aimbotPage.Visible and ACCENT or OFF
+end
+
+table.insert(accentRefreshers, refreshAimTabs)
+
+silentTab.MouseButton1Click:Connect(function()
+    silentPage.Visible = true
+    aimbotPage.Visible = false
+    refreshAimTabs()
+end)
+
+aimbotTab.MouseButton1Click:Connect(function()
+    silentPage.Visible = false
+    aimbotPage.Visible = true
+    refreshAimTabs()
+end)
+
+-- Opciones visuales de silent aim
+checkbox(silentPage, "enabled", false)
+checkbox(silentPage, "manipulation", false)
+checkbox(silentPage, "closest part", true)
+checkbox(silentPage, "visualize", false)
+checkbox(silentPage, "show fov", false)
+
+slider(silentPage, "radius", 1, 300, 15, "px")
+slider(silentPage, "hit chance", 0, 100, 100, "%")
+
+-- Opciones visuales de aimbot
+checkbox(aimbotPage, "enabled", false)
+checkbox(aimbotPage, "smooth aim", false)
+checkbox(aimbotPage, "visible only", true)
+
+slider(aimbotPage, "FOV", 1, 300, 15, "px")
+slider(aimbotPage, "smoothing", 1, 100, 50, "%")
+
+dropdown(aimbotPage, "target part", {
+    "Head",
+    "UpperTorso",
+    "LowerTorso",
+    "HumanoidRootPart",
+}, 1)
 
 local targeting = section(left, "targeting", 390)
 checkbox(targeting, "visible only", true)
