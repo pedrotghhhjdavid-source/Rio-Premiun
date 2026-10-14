@@ -1,436 +1,435 @@
--- RIO PREMIUM UI - INTERFAZ ORIGINAL (BASE VISUAL)
--- Interfaz visual para Roblox; no requiere Drawing ni Web UI.
--- Los controles de aimbot, auto-disparo, ESP y movimiento son visuales.
+-- ============================================================
+-- RIO PREMIUM UI
+-- Interfaz visual inspirada en la referencia del usuario.
+-- Los controles de aimbot/ESP son elementos visuales.
+-- ============================================================
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
+
 local LocalPlayer = Players.LocalPlayer
-
 if not LocalPlayer then
-    warn("Rio Premium UI: no se encontró LocalPlayer.")
+    warn("Rio Premium UI: LocalPlayer no disponible.")
     return
 end
 
-local ACCENT = Color3.fromRGB(242, 150, 238)
-local BG = Color3.fromRGB(25, 23, 32)
-local PANEL = Color3.fromRGB(37, 33, 45)
-local WHITE = Color3.fromRGB(245, 240, 250)
-local MUTED = Color3.fromRGB(185, 176, 195)
+-- Colores
+local ACCENT = Color3.fromRGB(105, 48, 220)
+local BG = Color3.fromRGB(17, 17, 18)
+local PANEL = Color3.fromRGB(25, 25, 27)
+local INNER = Color3.fromRGB(31, 31, 34)
+local WHITE = Color3.fromRGB(225, 225, 228)
+local MUTED = Color3.fromRGB(150, 150, 155)
+local OFF = Color3.fromRGB(36, 36, 39)
 
--- Obtener los contenedores de la interfaz de forma segura.
-local CoreGui
+-- Estado de la interfaz
+local toggleKey = Enum.KeyCode.RightShift
+local listeningKey = false
+local selectedTab = "main"
+local accentTargets = {}
+local accentRefreshers = {}
+local pages = {}
+local tabButtons = {}
+local columns = {}
+
+-- Colocar la interfaz en un contenedor permitido.
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+local coreGui
+
 pcall(function()
-    CoreGui = game:GetService("CoreGui")
+    coreGui = game:GetService("CoreGui")
 end)
 
-local PlayerGui
-pcall(function()
-    PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-end)
-
--- Limpiar una instancia anterior si existe.
-if CoreGui then
-    pcall(function()
-        local CoreGui
-pcall(function()
-    CoreGui = game:GetService("CoreGui")
-end)
-
-if CoreGui then
-    pcall(function()
-        local old = CoreGui:FindFirstChild("RioPremiumUI")
-        if old then
-            old:Destroy()
-        end
-    end)
-end
-    end)
+local parent = playerGui
+if coreGui then
+    parent = coreGui
 end
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "RioPremiumUI"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.DisplayOrder = 999
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
--- Intentar colocarla en CoreGui y recurrir a PlayerGui.
-local parented = false
-
-if CoreGui then
-    parented = pcall(function()
-        gui.Parent = CoreGui
-    end)
+-- Limpiar una ejecución anterior.
+for _, container in ipairs({playerGui, coreGui}) do
+    if container then
+        pcall(function()
+            local old = container:FindFirstChild("RioPremiumUI")
+            if old then
+                old:Destroy()
+            end
+        end)
+    end
 end
 
-if not parented and PlayerGui then
-    parented = pcall(function()
-        gui.Parent = PlayerGui
-    end)
-end
+local function create(className, properties, parentObject)
+    local object = Instance.new(className)
 
-if not parented then
-    warn("Rio Premium UI: no se pudo colocar la interfaz.")
-    gui:Destroy()
-    return
-end
-
-local function create(class, props, parentObj)
-    local obj = Instance.new(class)
-
-    for k, v in pairs(props) do
-        obj[k] = v
+    for property, value in pairs(properties) do
+        object[property] = value
     end
 
-    obj.Parent = parentObj
-    return obj
+    object.Parent = parentObject
+    return object
 end
 
--- Ventana principal.
+local function registerAccent(object, property)
+    table.insert(accentTargets, {
+        object = object,
+        property = property,
+    })
+end
+
+local function setAccentColor(color)
+    ACCENT = color
+
+    for _, item in ipairs(accentTargets) do
+        pcall(function()
+            item.object[item.property] = ACCENT
+        end)
+    end
+
+    for _, refresh in ipairs(accentRefreshers) do
+        pcall(refresh)
+    end
+end
+
+-- Ventana principal grande.
+local gui = create("ScreenGui", {
+    Name = "RioPremiumUI",
+    ResetOnSpawn = false,
+    IgnoreGuiInset = true,
+    DisplayOrder = 999,
+    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+}, parent)
+
 local main = create("Frame", {
     Name = "Main",
-    Size = UDim2.fromOffset(580, 460),
-    Position = UDim2.new(0.5, -290, 0.5, -230),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.fromScale(0.5, 0.5),
+    Size = UDim2.new(0.96, 0, 0.94, 0),
     BackgroundColor3 = BG,
-    BorderSizePixel = 0,
+    BorderSizePixel = 1,
+    BorderColor3 = Color3.fromRGB(45, 45, 48),
 }, gui)
 
-create("UICorner", {
-    CornerRadius = UDim.new(0, 10),
+create("UISizeConstraint", {
+    MinSize = Vector2.new(700, 620),
+    MaxSize = Vector2.new(1320, 930),
 }, main)
 
-create("UIStroke", {
+local outline = create("UIStroke", {
     Color = ACCENT,
-    Thickness = 1.4,
+    Thickness = 1,
 }, main)
+registerAccent(outline, "Color")
 
--- Barra superior.
-local top = create("Frame", {
-    Size = UDim2.new(1, 0, 0, 48),
+-- Encabezado
+local header = create("Frame", {
+    Name = "Header",
+    Size = UDim2.new(1, 0, 0, 43),
     BackgroundColor3 = PANEL,
     BorderSizePixel = 0,
 }, main)
 
-create("UICorner", {
-    CornerRadius = UDim.new(0, 10),
-}, top)
-
-create("Frame", {
-    Position = UDim2.new(0, 0, 1, -10),
-    Size = UDim2.new(1, 0, 0, 10),
-    BackgroundColor3 = PANEL,
-    BorderSizePixel = 0,
-}, top)
-
-create("TextLabel", {
+local title = create("TextLabel", {
+    Position = UDim2.fromOffset(14, 0),
+    Size = UDim2.new(1, -100, 1, 0),
     BackgroundTransparency = 1,
-    Position = UDim2.fromOffset(16, 0),
-    Size = UDim2.new(1, -80, 1, 0),
     Text = "Rio Premium UI",
-    Font = Enum.Font.GothamBold,
-    TextSize = 18,
+    Font = Enum.Font.Code,
+    TextSize = 20,
     TextColor3 = WHITE,
     TextXAlignment = Enum.TextXAlignment.Left,
-}, top)
+}, header)
 
 local close = create("TextButton", {
-    Position = UDim2.new(1, -42, 0, 9),
-    Size = UDim2.fromOffset(32, 30),
-    Text = "×",
-    Font = Enum.Font.GothamBold,
-    TextSize = 21,
-    TextColor3 = WHITE,
-    BackgroundColor3 = Color3.fromRGB(100, 49, 87),
+    AnchorPoint = Vector2.new(1, 0.5),
+    Position = UDim2.new(1, -9, 0.5, 0),
+    Size = UDim2.fromOffset(33, 29),
+    BackgroundColor3 = Color3.fromRGB(90, 28, 35),
     BorderSizePixel = 0,
-}, top)
-
-create("UICorner", {
-    CornerRadius = UDim.new(0, 6),
-}, close)
+    Text = "X",
+    TextColor3 = WHITE,
+    Font = Enum.Font.Code,
+    TextSize = 18,
+}, header)
 
 close.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Arrastrar la ventana.
-local dragging = false
-local dragInput
-local dragStart
-local startPos
-
-top.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-
-        dragging = true
-        dragStart = input.Position
-        startPos = main.Position
-
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-top.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UIS.InputChanged:Connect(function(input)
-    if dragging and input == dragInput then
-        local delta = input.Position - dragStart
-
-        main.Position = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
-    end
-end)
-
--- Barra lateral.
-local sidebar = create("Frame", {
-    Position = UDim2.fromOffset(10, 58),
-    Size = UDim2.new(0, 155, 1, -68),
-    BackgroundColor3 = PANEL,
+-- Barra de pestañas.
+local nav = create("Frame", {
+    Position = UDim2.fromOffset(8, 49),
+    Size = UDim2.new(1, -16, 0, 39),
+    BackgroundTransparency = 1,
     BorderSizePixel = 0,
 }, main)
-
-create("UICorner", {
-    CornerRadius = UDim.new(0, 8),
-}, sidebar)
-
-create("UIPadding", {
-    PaddingTop = UDim.new(0, 8),
-    PaddingLeft = UDim.new(0, 7),
-    PaddingRight = UDim.new(0, 7),
-}, sidebar)
 
 create("UIListLayout", {
-    Padding = UDim.new(0, 6),
+    FillDirection = Enum.FillDirection.Horizontal,
+    HorizontalAlignment = Enum.HorizontalAlignment.Left,
+    VerticalAlignment = Enum.VerticalAlignment.Center,
+    Padding = UDim.new(0, 5),
     SortOrder = Enum.SortOrder.LayoutOrder,
-}, sidebar)
+}, nav)
+
+local tabNames = {
+    "main",
+    "world",
+    "esp",
+    "visuals",
+    "character",
+    "misc",
+    "settings",
+}
 
 -- Área de contenido.
-local content = create("Frame", {
-    Position = UDim2.fromOffset(174, 58),
-    Size = UDim2.new(1, -184, 1, -68),
-    BackgroundColor3 = PANEL,
+local body = create("Frame", {
+    Position = UDim2.fromOffset(8, 96),
+    Size = UDim2.new(1, -16, 1, -104),
+    BackgroundTransparency = 1,
     BorderSizePixel = 0,
 }, main)
 
-create("UICorner", {
-    CornerRadius = UDim.new(0, 8),
-}, content)
-
-local pages = {}
-local tabButtons = {}
-local controls = {}
-
--- Crear pestañas.
-local function addPage(key, title, order)
-    local tab = create("TextButton", {
-        LayoutOrder = order,
-        Size = UDim2.new(1, 0, 0, 38),
-        BackgroundColor3 = BG,
-        BorderSizePixel = 0,
-        Text = title,
-        TextColor3 = WHITE,
-        Font = Enum.Font.GothamMedium,
-        TextSize = 12,
-    }, sidebar)
-
-    create("UICorner", {
-        CornerRadius = UDim.new(0, 6),
-    }, tab)
-
-    local page = create("ScrollingFrame", {
-        Name = key,
-        Visible = false,
-        Position = UDim2.fromOffset(8, 8),
-        Size = UDim2.new(1, -16, 1, -16),
+-- Columnas desplazables.
+local function makeColumns(page)
+    local left = create("ScrollingFrame", {
+        Name = "LeftColumn",
+        Position = UDim2.fromOffset(0, 0),
+        Size = UDim2.new(0.5, -5, 1, 0),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         ScrollBarThickness = 4,
         ScrollBarImageColor3 = ACCENT,
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
         CanvasSize = UDim2.new(),
-    }, content)
-
-    create("UIListLayout", {
-        Padding = UDim.new(0, 7),
-        SortOrder = Enum.SortOrder.LayoutOrder,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
     }, page)
 
-    create("TextLabel", {
-        LayoutOrder = 0,
-        Size = UDim2.new(1, -4, 0, 30),
+    local right = create("ScrollingFrame", {
+        Name = "RightColumn",
+        Position = UDim2.new(0.5, 5, 0, 0),
+        Size = UDim2.new(0.5, -5, 1, 0),
         BackgroundTransparency = 1,
-        Text = title,
-        TextColor3 = ACCENT,
-        Font = Enum.Font.GothamBold,
-        TextSize = 16,
-        TextXAlignment = Enum.TextXAlignment.Left,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 4,
+        ScrollBarImageColor3 = ACCENT,
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        CanvasSize = UDim2.new(),
+        ScrollingDirection = Enum.ScrollingDirection.Y,
     }, page)
 
-    pages[key] = page
-    tabButtons[key] = tab
+    registerAccent(left, "ScrollBarImageColor3")
+    registerAccent(right, "ScrollBarImageColor3")
+
+    for _, column in ipairs({left, right}) do
+        create("UIListLayout", {
+            Padding = UDim.new(0, 9),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+        }, column)
+    end
+
+    return left, right
+end
+
+for index, name in ipairs(tabNames) do
+    local tab = create("TextButton", {
+        Name = name .. "Tab",
+        LayoutOrder = index,
+        Size = UDim2.new(1 / #tabNames, -5, 1, 0),
+        BackgroundColor3 = OFF,
+        BorderSizePixel = 1,
+        BorderColor3 = Color3.fromRGB(48, 48, 52),
+        Text = name,
+        TextColor3 = WHITE,
+        Font = Enum.Font.Code,
+        TextSize = 17,
+    }, nav)
+
+    local page = create("Frame", {
+        Name = name .. "Page",
+        Visible = name == "main",
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+    }, body)
+
+    local left, right = makeColumns(page)
+
+    tabButtons[name] = tab
+    pages[name] = page
+    columns[name] = {left, right}
 
     tab.MouseButton1Click:Connect(function()
-        for k, p in pairs(pages) do
-            p.Visible = (k == key)
+        selectedTab = name
+
+        for key, otherPage in pairs(pages) do
+            otherPage.Visible = key == selectedTab
         end
 
-        for k, b in pairs(tabButtons) do
-            b.BackgroundColor3 = (k == key) and ACCENT or BG
-            b.TextColor3 = (k == key) and BG or WHITE
+        for key, otherTab in pairs(tabButtons) do
+            otherTab.BackgroundColor3 =
+                key == selectedTab and ACCENT or OFF
+
+            otherTab.TextColor3 =
+                key == selectedTab and WHITE or MUTED
         end
     end)
-
-    return page
 end
 
--- Mensajes informativos.
-local function info(page, text)
-    local label = create("TextLabel", {
-        Size = UDim2.new(1, -4, 0, 42),
-        BackgroundColor3 = BG,
+table.insert(accentRefreshers, function()
+    for key, tab in pairs(tabButtons) do
+        tab.BackgroundColor3 = key == selectedTab and ACCENT or OFF
+        tab.TextColor3 = key == selectedTab and WHITE or MUTED
+    end
+end)
+
+-- Crear paneles.
+local function section(parentObject, name, height)
+    local panel = create("Frame", {
+        Name = name,
+        Size = UDim2.new(1, -5, 0, height),
+        BackgroundColor3 = PANEL,
+        BorderSizePixel = 1,
+        BorderColor3 = Color3.fromRGB(48, 48, 52),
+    }, parentObject)
+
+    local line = create("Frame", {
+        Position = UDim2.fromOffset(0, 0),
+        Size = UDim2.new(1, 0, 0, 2),
+        BackgroundColor3 = ACCENT,
         BorderSizePixel = 0,
-        Text = text,
-        TextWrapped = true,
-        TextColor3 = MUTED,
-        Font = Enum.Font.Gotham,
-        TextSize = 11,
-    }, page)
+    }, panel)
 
-    create("UICorner", {
-        CornerRadius = UDim.new(0, 6),
-    }, label)
+    registerAccent(line, "BackgroundColor3")
+
+    create("TextLabel", {
+        Position = UDim2.fromOffset(10, 3),
+        Size = UDim2.new(1, -20, 0, 27),
+        BackgroundTransparency = 1,
+        Text = name,
+        TextColor3 = WHITE,
+        Font = Enum.Font.Code,
+        TextSize = 17,
+        TextXAlignment = Enum.TextXAlignment.Center,
+    }, panel)
+
+    local content = create("Frame", {
+        Position = UDim2.fromOffset(8, 34),
+        Size = UDim2.new(1, -16, 1, -41),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+    }, panel)
+
+    create("UIListLayout", {
+        Padding = UDim.new(0, 3),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+    }, content)
+
+    return content
 end
 
--- Botones ON/OFF.
-local function toggle(page, label, default, callback)
+-- Checkbox visual.
+local function checkbox(parentObject, label, default)
     local state = default == true
 
     local row = create("Frame", {
-        Size = UDim2.new(1, -4, 0, 38),
-        BackgroundColor3 = BG,
+        Size = UDim2.new(1, 0, 0, 27),
+        BackgroundTransparency = 1,
         BorderSizePixel = 0,
-    }, page)
+    }, parentObject)
 
-    create("UICorner", {
-        CornerRadius = UDim.new(0, 6),
+    local box = create("TextButton", {
+        Position = UDim2.fromOffset(0, 4),
+        Size = UDim2.fromOffset(19, 19),
+        BackgroundColor3 = state and ACCENT or OFF,
+        BorderSizePixel = 1,
+        BorderColor3 = Color3.fromRGB(50, 50, 54),
+        Text = state and "✓" or "",
+        TextColor3 = WHITE,
+        Font = Enum.Font.Code,
+        TextSize = 15,
     }, row)
 
-    create("TextLabel", {
-        Position = UDim2.fromOffset(10, 0),
-        Size = UDim2.new(1, -82, 1, 0),
+    local labelText = create("TextLabel", {
+        Position = UDim2.fromOffset(27, 0),
+        Size = UDim2.new(1, -29, 1, 0),
         BackgroundTransparency = 1,
         Text = label,
         TextColor3 = WHITE,
-        Font = Enum.Font.Gotham,
-        TextSize = 11,
+        Font = Enum.Font.Code,
+        TextSize = 16,
         TextXAlignment = Enum.TextXAlignment.Left,
     }, row)
 
-    local btn = create("TextButton", {
-        Position = UDim2.new(1, -66, 0.5, -12),
-        Size = UDim2.fromOffset(56, 24),
-        BackgroundColor3 = state and ACCENT
-            or Color3.fromRGB(74, 69, 83),
-        Text = state and "ON" or "OFF",
-        TextColor3 = state and BG or WHITE,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        BorderSizePixel = 0,
-    }, row)
-
-    create("UICorner", {
-        CornerRadius = UDim.new(0, 6),
-    }, btn)
-
-    local function set(v)
-        state = v
-        btn.Text = state and "ON" or "OFF"
-        btn.BackgroundColor3 = state and ACCENT
-            or Color3.fromRGB(74, 69, 83)
-        btn.TextColor3 = state and BG or WHITE
-
-        if callback then
-            callback(state)
-        end
+    local function refresh()
+        box.BackgroundColor3 = state and ACCENT or OFF
+        box.Text = state and "✓" or ""
     end
 
-    btn.MouseButton1Click:Connect(function()
-        set(not state)
+    table.insert(accentRefreshers, refresh)
+
+    box.MouseButton1Click:Connect(function()
+        state = not state
+        refresh()
     end)
 
-    controls[label] = set
+    labelText.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            state = not state
+            refresh()
+        end
+    end)
 end
 
--- Barra deslizante.
-local function slider(page, label, minV, maxV, defaultV, callback)
-    local value = defaultV
+-- Slider visual con ajuste mediante clic y arrastre.
+local function slider(parentObject, label, minValue, maxValue, initial, suffix)
+    local value = initial
+    local dragging = false
 
     local row = create("Frame", {
-        Size = UDim2.new(1, -4, 0, 58),
-        BackgroundColor3 = BG,
+        Size = UDim2.new(1, 0, 0, 47),
+        BackgroundTransparency = 1,
         BorderSizePixel = 0,
-    }, page)
+    }, parentObject)
 
-    create("UICorner", {
-        CornerRadius = UDim.new(0, 6),
-    }, row)
-
-    create("TextLabel", {
-        Position = UDim2.fromOffset(10, 2),
-        Size = UDim2.new(1, -65, 0, 24),
+    local labelText = create("TextLabel", {
+        Size = UDim2.new(0.68, 0, 0, 21),
         BackgroundTransparency = 1,
         Text = label,
         TextColor3 = WHITE,
-        Font = Enum.Font.Gotham,
-        TextSize = 11,
+        Font = Enum.Font.Code,
+        TextSize = 15,
         TextXAlignment = Enum.TextXAlignment.Left,
     }, row)
 
-    local val = create("TextLabel", {
-        Position = UDim2.new(1, -54, 0, 2),
-        Size = UDim2.fromOffset(44, 24),
+    local valueText = create("TextLabel", {
+        Position = UDim2.new(0.68, 0, 0, 0),
+        Size = UDim2.new(0.32, 0, 0, 21),
         BackgroundTransparency = 1,
-        Text = tostring(value),
-        TextColor3 = ACCENT,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
+        TextColor3 = WHITE,
+        Text = tostring(value) .. (suffix or ""),
+        Font = Enum.Font.Code,
+        TextSize = 15,
+        TextXAlignment = Enum.TextXAlignment.Right,
     }, row)
 
     local track = create("TextButton", {
-        Position = UDim2.new(0, 10, 0, 35),
-        Size = UDim2.new(1, -20, 0, 8),
-        BackgroundColor3 = Color3.fromRGB(74, 69, 83),
-        Text = "",
+        Position = UDim2.new(0, 0, 0, 27),
+        Size = UDim2.new(1, 0, 0, 9),
+        BackgroundColor3 = OFF,
         BorderSizePixel = 0,
+        Text = "",
         AutoButtonColor = false,
     }, row)
 
-    create("UICorner", {
-        CornerRadius = UDim.new(1, 0),
-    }, track)
-
     local fill = create("Frame", {
-        Size = UDim2.new((value - minV) / (maxV - minV), 0, 1, 0),
+        Size = UDim2.new(
+            (value - minValue) / (maxValue - minValue), 0, 1, 0
+        ),
         BackgroundColor3 = ACCENT,
         BorderSizePixel = 0,
     }, track)
 
-    create("UICorner", {
-        CornerRadius = UDim.new(1, 0),
-    }, fill)
+    registerAccent(fill, "BackgroundColor3")
 
     local function update(x)
         local width = track.AbsoluteSize.X
@@ -444,167 +443,358 @@ local function slider(page, label, minV, maxV, defaultV, callback)
             1
         )
 
-        value = math.floor(minV + fraction * (maxV - minV) + 0.5)
-        val.Text = tostring(value)
-        fill.Size = UDim2.new(fraction, 0, 1, 0)
+        value = math.floor(
+            minValue + fraction * (maxValue - minValue) + 0.5
+        )
 
-        if callback then
-            callback(value)
-        end
+        valueText.Text = tostring(value) .. (suffix or "")
+        fill.Size = UDim2.new(fraction, 0, 1, 0)
     end
 
-    track.MouseButton1Down:Connect(function(x)
-        update(x)
-    end)
-
     track.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
             update(input.Position.X)
         end
     end)
 
-    controls[label] = function(v)
-        value = math.clamp(v, minV, maxV)
-        val.Text = tostring(value)
-        fill.Size = UDim2.new(
-            (value - minV) / (maxV - minV),
-            0,
-            1,
-            0
-        )
-
-        if callback then
-            callback(value)
+    UIS.InputChanged:Connect(function(input)
+        if dragging and (
+            input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch
+        ) then
+            update(input.Position.X)
         end
+    end)
+
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+end
+
+-- Selector visual: clic para cambiar de opción.
+local function dropdown(parentObject, label, options, initialIndex)
+    local index = initialIndex or 1
+
+    local row = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 47),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+    }, parentObject)
+
+    create("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 20),
+        BackgroundTransparency = 1,
+        Text = label,
+        TextColor3 = WHITE,
+        Font = Enum.Font.Code,
+        TextSize = 15,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, row)
+
+    local button = create("TextButton", {
+        Position = UDim2.fromOffset(0, 22),
+        Size = UDim2.new(1, 0, 0, 24),
+        BackgroundColor3 = INNER,
+        BorderSizePixel = 1,
+        BorderColor3 = Color3.fromRGB(48, 48, 52),
+        Text = options[index] .. "   >",
+        TextColor3 = WHITE,
+        Font = Enum.Font.Code,
+        TextSize = 15,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, row)
+
+    button.MouseButton1Click:Connect(function()
+        index = index % #options + 1
+        button.Text = options[index] .. "   >"
+    end)
+end
+
+local function actionButton(parentObject, text, callback)
+    local button = create("TextButton", {
+        Size = UDim2.new(1, 0, 0, 32),
+        BackgroundColor3 = INNER,
+        BorderSizePixel = 1,
+        BorderColor3 = Color3.fromRGB(48, 48, 52),
+        Text = text,
+        TextColor3 = WHITE,
+        Font = Enum.Font.Code,
+        TextSize = 15,
+    }, parentObject)
+
+    button.MouseButton1Click:Connect(callback)
+    return button
+end
+
+local function note(parentObject, text)
+    create("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 40),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextWrapped = true,
+        TextColor3 = MUTED,
+        Font = Enum.Font.Code,
+        TextSize = 13,
+    }, parentObject)
+end
+
+-- ============================================================
+-- MAIN: dos columnas similares a la imagen.
+-- ============================================================
+
+local left = columns.main[1]
+local right = columns.main[2]
+
+local silent = section(left, "silent aim", 292)
+checkbox(silent, "enabled", false)
+checkbox(silent, "manipulation", false)
+checkbox(silent, "closest part", true)
+checkbox(silent, "visualize", false)
+checkbox(silent, "show fov", false)
+slider(silent, "radius", 1, 300, 15, "px")
+slider(silent, "hit chance", 0, 100, 100, "%")
+
+local targeting = section(left, "targeting", 390)
+checkbox(targeting, "visible only", true)
+checkbox(targeting, "ignore protected", false)
+checkbox(targeting, "disable on flash", false)
+checkbox(targeting, "limit distance", false)
+slider(targeting, "reaction time", 0, 500, 0, "ms")
+slider(targeting, "forget time", 0, 10, 0, "s")
+dropdown(targeting, "target part", {
+    "Head", "UpperTorso", "LowerTorso", "HumanoidRootPart"
+}, 1)
+dropdown(targeting, "closest part blacklist", {
+    "HumanoidRootPart", "UpperTorso", "Head", "None"
+}, 1)
+
+local trigger = section(right, "triggerbot", 105)
+checkbox(trigger, "enabled", false)
+dropdown(trigger, "mode", {"Equa", "Default"}, 1)
+
+local weapons = section(right, "weapons", 245)
+checkbox(weapons, "no spread", false)
+checkbox(weapons, "full auto", false)
+checkbox(weapons, "always backstab", true)
+dropdown(weapons, "grenade options", {
+    "...", "default", "custom"
+}, 1)
+slider(weapons, "firerate", 0, 100, 100, "%")
+
+local rage = section(right, "ragebot", 315)
+checkbox(rage, "enabled", false)
+checkbox(rage, "void spam", false)
+slider(rage, "shoot attempts", 1, 10, 1, "x")
+dropdown(rage, "attack mode", {"gun", "melee", "mixed"}, 1)
+dropdown(rage, "preferred weapon", {"primary", "secondary"}, 1)
+dropdown(rage, "settings", {"...", "default"}, 1)
+
+local priority = section(right, "priority", 125)
+dropdown(priority, "priority mode", {
+    "closest", "visible", "lowest health"
+}, 1)
+checkbox(priority, "prioritize selected", false)
+
+-- ============================================================
+-- WORLD
+-- ============================================================
+
+local worldLeft = columns.world[1]
+local worldRight = columns.world[2]
+
+local worldPanel = section(worldLeft, "world", 220)
+checkbox(worldPanel, "enabled", false)
+checkbox(worldPanel, "remove fog", false)
+checkbox(worldPanel, "fullbright", false)
+checkbox(worldPanel, "show objects", false)
+slider(worldPanel, "brightness", 0, 100, 50, "%")
+
+local environment = section(worldRight, "environment", 180)
+checkbox(environment, "show environment panel", false)
+dropdown(environment, "world preset", {
+    "default", "dark", "bright"
+}, 1)
+note(environment, "Controles visuales. No modifican el mundo del juego.")
+
+-- ============================================================
+-- ESP
+-- ============================================================
+
+local espLeft = columns.esp[1]
+local espRight = columns.esp[2]
+
+local espPanel = section(espLeft, "player esp", 230)
+checkbox(espPanel, "enabled", false)
+checkbox(espPanel, "box", false)
+checkbox(espPanel, "skeleton", false)
+checkbox(espPanel, "healthbar", false)
+checkbox(espPanel, "name", false)
+checkbox(espPanel, "distance", false)
+
+local espFilters = section(espRight, "filters", 190)
+checkbox(espFilters, "visible only", false)
+checkbox(espFilters, "ignore teammates", false)
+checkbox(espFilters, "show NPCs", false)
+dropdown(espFilters, "box style", {"normal", "corner"}, 1)
+dropdown(espFilters, "text style", {"default", "compact"}, 1)
+
+-- ============================================================
+-- VISUALS
+-- ============================================================
+
+local visualLeft = columns.visuals[1]
+local visualRight = columns.visuals[2]
+
+local visualPanel = section(visualLeft, "visuals", 230)
+checkbox(visualPanel, "show FOV circle", false)
+checkbox(visualPanel, "crosshair", false)
+checkbox(visualPanel, "tracers", false)
+checkbox(visualPanel, "show labels", false)
+slider(visualPanel, "crosshair size", 1, 30, 8, "px")
+
+local visualOptions = section(visualRight, "display options", 180)
+dropdown(visualOptions, "style", {"default", "minimal"}, 1)
+checkbox(visualOptions, "outline", true)
+checkbox(visualOptions, "show status", false)
+note(visualOptions, "Opciones de apariencia de la interfaz.")
+
+-- ============================================================
+-- CHARACTER
+-- ============================================================
+
+local charLeft = columns.character[1]
+local charRight = columns.character[2]
+
+local movement = section(charLeft, "character", 235)
+checkbox(movement, "movement options", false)
+checkbox(movement, "fly toggle", false)
+checkbox(movement, "noclip toggle", false)
+checkbox(movement, "infinite jump", false)
+slider(movement, "movement speed", 16, 100, 16, "")
+
+local characterSettings = section(charRight, "character settings", 180)
+dropdown(characterSettings, "preset", {
+    "default", "custom"
+}, 1)
+checkbox(characterSettings, "show status", false)
+note(characterSettings, "Los controles de movimiento son solo visuales.")
+
+-- ============================================================
+-- MISC
+-- ============================================================
+
+local miscLeft = columns.misc[1]
+local miscRight = columns.misc[2]
+
+local miscPanel = section(miscLeft, "misc", 190)
+checkbox(miscPanel, "show notifications", true)
+checkbox(miscPanel, "show status label", false)
+checkbox(miscPanel, "compact labels", false)
+dropdown(miscPanel, "interface mode", {"default", "classic"}, 1)
+
+local miscInfo = section(miscRight, "information", 130)
+note(miscInfo, "Rio Premium UI")
+note(miscInfo, "RightShift: ocultar o mostrar la interfaz.")
+
+-- ============================================================
+-- SETTINGS: tecla y color de acento.
+-- ============================================================
+
+local settingsLeft = columns.settings[1]
+local settingsRight = columns.settings[2]
+
+local keyPanel = section(settingsLeft, "interface settings", 190)
+
+local keybindButton
+keybindButton = actionButton(
+    keyPanel,
+    "toggle key: RightShift (click to change)",
+    function()
+        listeningKey = true
+        keybindButton.Text = "Press any keyboard key..."
     end
-end
-
--- Pestaña Aim Bot.
-local aim = addPage("Aim", "Aim Bot", 1)
-
-info(
-    aim,
-    "Rio Premium UI v2.5 — interfaz visual. Funciones de apuntado no incluidas."
 )
 
-toggle(aim, "Activar Aim Bot (Aimbot Toggle)", false)
-toggle(aim, "Silent Aim (Silent Toggle)", false)
-toggle(aim, "Trigger Bot (Auto-Disparo)", false)
-
-slider(
-    aim,
-    "Radio del FOV (Aimbot Radius)",
-    10,
-    1000,
-    110
-)
-
-info(
-    aim,
-    "Parte del Cuerpo (Targeting Part): Head / UpperTorso / LowerTorso / HumanoidRootPart"
-)
-
--- Pestaña Rage Bot.
-local rage = addPage("Rage", "Rage Bot", 2)
-info(rage, "Apartado no implementado en esta versión.")
-
--- Pestaña Visuales.
-local visuals = addPage("Visuals", "Visuales (ESP)", 3)
-
-toggle(visuals, "Cuadro de Jugador (ESP Box)", false)
-toggle(visuals, "Esqueleto Visual (ESP Skeleton)", false)
-toggle(visuals, "Barra de Vida (ESP Healthbar)", false)
-
-info(visuals, "Color Inicial de Vida (Healthbar Start): rosa/morado")
-info(
-    visuals,
-    "Los controles son visuales; no rastrean ni dibujan sobre otros jugadores."
-)
-
--- Pestaña Movimiento.
-local movement = addPage("Movement", "Movimiento", 4)
-
-toggle(movement, "Noclip (Atravesar Paredes)", false)
-toggle(movement, "Volar (Fly)", false)
-
-slider(
-    movement,
-    "Velocidad de Vuelo (Fly Value)",
-    16,
-    300,
-    100
-)
-
-toggle(movement, "Saltos Infinitos (Infinite Double Jump)", false)
-
-info(movement, "Los controles de movimiento son solo visuales en esta base.")
-
--- Pestaña Ajustes.
-local settings = addPage("Settings", "Ajustes / Configs", 5)
-
-info(settings, "Ocultar Interfaz: RightShift. Las preferencias no se guardan.")
-
-local hide = create("TextButton", {
-    Size = UDim2.new(1, -4, 0, 38),
-    BackgroundColor3 = BG,
-    BorderSizePixel = 0,
-    Text = "Ocultar Interfaz (RightShift)",
-    TextColor3 = WHITE,
-    Font = Enum.Font.Gotham,
-    TextSize = 11,
-}, settings)
-
-create("UICorner", {
-    CornerRadius = UDim.new(0, 6),
-}, hide)
-
-hide.MouseButton1Click:Connect(function()
-    main.Visible = false
+actionButton(keyPanel, "Reset key to RightShift", function()
+    toggleKey = Enum.KeyCode.RightShift
+    listeningKey = false
+    keybindButton.Text =
+        "toggle key: RightShift (click to change)"
 end)
 
-local unload = create("TextButton", {
-    Size = UDim2.new(1, -4, 0, 38),
-    BackgroundColor3 = Color3.fromRGB(100, 49, 87),
-    BorderSizePixel = 0,
-    Text = "Cerrar Todo (Unload Script)",
-    TextColor3 = WHITE,
-    Font = Enum.Font.GothamBold,
-    TextSize = 11,
-}, settings)
+local colors = section(settingsRight, "interface color", 300)
 
-create("UICorner", {
-    CornerRadius = UDim.new(0, 6),
-}, unload)
+local presets = {
+    {name = "Purple", color = Color3.fromRGB(105, 48, 220)},
+    {name = "Blue", color = Color3.fromRGB(40, 120, 245)},
+    {name = "Red", color = Color3.fromRGB(225, 55, 70)},
+    {name = "Green", color = Color3.fromRGB(45, 190, 105)},
+    {name = "Gold", color = Color3.fromRGB(220, 165, 45)},
+    {name = "Pink", color = Color3.fromRGB(240, 80, 185)},
+}
 
-unload.MouseButton1Click:Connect(function()
-    gui:Destroy()
-end)
+for _, preset in ipairs(presets) do
+    local button = create("TextButton", {
+        Size = UDim2.new(1, 0, 0, 31),
+        BackgroundColor3 = preset.color,
+        BorderSizePixel = 0,
+        Text = preset.name,
+        TextColor3 = WHITE,
+        Font = Enum.Font.Code,
+        TextSize = 16,
+    }, colors)
 
--- Seleccionar la primera pestaña.
-for k, p in pairs(pages) do
-    p.Visible = (k == "Aim")
+    button.MouseButton1Click:Connect(function()
+        setAccentColor(preset.color)
+    end)
 end
 
-for k, b in pairs(tabButtons) do
-    b.BackgroundColor3 = (k == "Aim") and ACCENT or BG
-    b.TextColor3 = (k == "Aim") and BG or WHITE
+-- ============================================================
+-- Seleccionar la pestaña inicial y manejar la tecla.
+-- ============================================================
+
+for key, button in pairs(tabButtons) do
+    button.BackgroundColor3 = key == "main" and ACCENT or OFF
+    button.TextColor3 = key == "main" and WHITE or MUTED
 end
 
--- Mostrar/ocultar con RightShift.
 UIS.InputBegan:Connect(function(input, processed)
+    if not gui.Parent then
+        return
+    end
+
+    if listeningKey then
+        if input.UserInputType == Enum.UserInputType.Keyboard
+            and input.KeyCode ~= Enum.KeyCode.Unknown then
+
+            toggleKey = input.KeyCode
+            listeningKey = false
+            keybindButton.Text =
+                "toggle key: " .. toggleKey.Name .. " (click to change)"
+        end
+        return
+    end
+
     if not processed
-        and input.KeyCode == Enum.KeyCode.RightShift
-        and gui.Parent then
+        and input.UserInputType == Enum.UserInputType.Keyboard
+        and input.KeyCode == toggleKey then
 
         main.Visible = not main.Visible
     end
 end)
 
--- Notificación opcional.
+-- Aviso de carga.
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Rio Premium UI",
-        Text = "Interfaz cargada",
-        Duration = 4,
+        Text = "Interface loaded",
+        Duration = 3,
     })
 end)
+
+print("Rio Premium UI: interfaz creada.")
