@@ -24,6 +24,8 @@ local OFF = Color3.fromRGB(36, 36, 39)
 
 -- Estado de la interfaz
 local toggleKey = Enum.KeyCode.RightShift
+local moveEnabled = false
+local draggingWindow = false
 local listeningKey = false
 local selectedTab = "main"
 local accentTargets = {}
@@ -197,6 +199,44 @@ UIS.InputEnded:Connect(function(input)
         end
     end
 end)
+
+-- Botón para activar/desactivar el movimiento de la ventana
+local moveButton = create("TextButton", {
+    Name = "RioMoveToggle",
+    AnchorPoint = Vector2.new(1, 0.5),
+    Position = UDim2.new(0.5, -330, 0.5, 70),
+    Size = UDim2.fromOffset(62, 62),
+    BackgroundColor3 = ACCENT,
+    BorderSizePixel = 0,
+    Text = "ON",
+    TextColor3 = Color3.fromRGB(0, 0, 0),
+    Font = Enum.Font.GothamBold,
+    TextSize = 16,
+    ZIndex = 50,
+}, gui)
+
+create("UICorner", {
+    CornerRadius = UDim.new(1, 0),
+}, moveButton)
+
+local moveStroke = create("UIStroke", {
+    Color = Color3.fromRGB(30, 30, 30),
+    Thickness = 1.5,
+}, moveButton)
+
+registerAccent(moveStroke, "Color")
+
+moveButton.MouseButton1Click:Connect(function()
+    moveEnabled = not moveEnabled
+
+    if moveEnabled then
+        moveButton.Text = "OFF"
+    else
+        moveButton.Text = "ON"
+        draggingWindow = false
+    end
+end)
+
 local outline = create("UIStroke", {
     Color = ACCENT,
     Thickness = 1,
@@ -210,6 +250,53 @@ local header = create("Frame", {
     BackgroundColor3 = PANEL,
     BorderSizePixel = 0,
 }, main)
+
+-- Mover la ventana solo cuando el modo esté activado
+local dragStart
+local startPos
+local dragInput
+
+header.InputBegan:Connect(function(input)
+    if not moveEnabled then
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        draggingWindow = true
+        dragStart = input.Position
+        startPos = main.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                draggingWindow = false
+            end
+        end)
+    end
+end)
+
+header.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if not moveEnabled or not draggingWindow or input ~= dragInput then
+        return
+    end
+
+    local delta = input.Position - dragStart
+
+    main.Position = UDim2.new(
+        startPos.X.Scale,
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale,
+        startPos.Y.Offset + delta.Y
+    )
+end)
 
 local title = create("TextLabel", {
     Name = "RioRageTitle",
