@@ -22,7 +22,6 @@ local ESP_Color = Color3.fromRGB(251, 184, 248) -- Tu color rosa original
 local Fluent = loadstring(game:HttpGet("https://githubusercontent.com"))()
 local SaveManager = loadstring(game:HttpGet("https://githubusercontent.com"))()
 local ThemeManager = loadstring(game:HttpGet("https://githubusercontent.com"))()
-
 -- 2. CREACIÓN DE LA VENTANA (Copia exacta del diseño del dueño con tu nombre)
 local Window = Fluent:MakeWindow({
     Name = "Rio Premium UI",    
