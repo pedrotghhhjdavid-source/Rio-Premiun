@@ -211,6 +211,19 @@ local header = create("Frame", {
     BorderSizePixel = 0,
 }, main)
 
+local title = create("TextLabel", {
+    Name = "RioRageTitle",
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.new(0.5, 0, 0.5, 0),
+    Size = UDim2.fromOffset(260, 32),
+    BackgroundTransparency = 1,
+    Text = "RioRage.win",
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    Font = Enum.Font.GothamBold,
+    TextSize = 20,
+    TextXAlignment = Enum.TextXAlignment.Center,
+}, header)
+
 local gameLabel = create("TextLabel", {
     Name = "GameLabel",
     AnchorPoint = Vector2.new(1, 0.5),
