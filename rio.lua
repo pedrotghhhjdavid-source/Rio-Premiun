@@ -102,15 +102,15 @@ local main = create("Frame", {
     Name = "Main",
     AnchorPoint = Vector2.new(0.5, 0.5),
     Position = UDim2.fromScale(0.5, 0.5),
-    Size = UDim2.new(0.96, 0, 0.94, 0),
+    Size = UDim2.fromOffset(640, 760),
     BackgroundColor3 = BG,
     BorderSizePixel = 1,
     BorderColor3 = Color3.fromRGB(45, 45, 48),
 }, gui)
 
 create("UISizeConstraint", {
-    MinSize = Vector2.new(700, 620),
-    MaxSize = Vector2.new(1320, 930),
+    MinSize = Vector2.new(580, 620),
+    MaxSize = Vector2.new(680, 800),
 }, main)
 
 local outline = create("UIStroke", {
