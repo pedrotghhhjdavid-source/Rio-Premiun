@@ -31,10 +31,19 @@ end)
 -- Limpiar una instancia anterior si existe.
 if CoreGui then
     pcall(function()
+        local CoreGui
+pcall(function()
+    CoreGui = game:GetService("CoreGui")
+end)
+
+if CoreGui then
+    pcall(function()
         local old = CoreGui:FindFirstChild("RioPremiumUI")
         if old then
             old:Destroy()
         end
+    end)
+end
     end)
 end
 
