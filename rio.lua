@@ -226,14 +226,94 @@ local moveStroke = create("UIStroke", {
 
 registerAccent(moveStroke, "Color")
 
-moveButton.MouseButton1Click:Connect(function()
-    moveEnabled = not moveEnabled
+-- Arrastrar y pulsar la bolita ON/OFF
+local moveButtonDragging = false
+local moveButtonMoved = false
+local moveButtonStart
+local moveButtonStartPosition
+local moveButtonTouch
 
-    if moveEnabled then
-        moveButton.Text = "OFF"
+moveButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        moveButtonDragging = true
+        moveButtonMoved = false
+        moveButtonStart = input.Position
+        moveButtonStartPosition = moveButton.Position
+
+        if input.UserInputType == Enum.UserInputType.Touch then
+            moveButtonTouch = input
+        else
+            moveButtonTouch = nil
+        end
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if not moveButtonDragging then
+        return
+    end
+
+    local validInput
+
+    if moveButtonTouch then
+        validInput = input == moveButtonTouch
     else
-        moveButton.Text = "ON"
-        draggingWindow = false
+        validInput =
+            input.UserInputType == Enum.UserInputType.MouseMovement
+    end
+
+    if not validInput then
+        return
+    end
+
+    local delta = input.Position - moveButtonStart
+
+    if delta.Magnitude > 5 then
+        moveButtonMoved = true
+    end
+
+    if moveButtonMoved then
+        moveButton.Position = UDim2.new(
+            moveButtonStartPosition.X.Scale,
+            moveButtonStartPosition.X.Offset + delta.X,
+            moveButtonStartPosition.Y.Scale,
+            moveButtonStartPosition.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if not moveButtonDragging then
+        return
+    end
+
+    local finished
+
+    if moveButtonTouch then
+        finished = input == moveButtonTouch
+    else
+        finished =
+            input.UserInputType == Enum.UserInputType.MouseButton1
+    end
+
+    if not finished then
+        return
+    end
+
+    moveButtonDragging = false
+    moveButtonTouch = nil
+
+    if not moveButtonMoved then
+        moveEnabled = not moveEnabled
+
+        if moveEnabled then
+            moveButton.Text = "OFF"
+        else
+            moveButton.Text = "ON"
+            draggingWindow = false
+        end
     end
 end)
 
