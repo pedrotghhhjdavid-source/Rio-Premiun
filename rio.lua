@@ -1,5 +1,5 @@
 ----------------------------------------------------------------------
--- YABUJIN HUD — ROBLOX RIVALS
+-- YABUJIN HUD — ROBLOX RIVALS (ACTUALIZADO: SPOOFER POR USER ID)
 ----------------------------------------------------------------------
 
 local Players = game:GetService("Players")
@@ -19,9 +19,9 @@ end
 
 ----------------------------------------------------------------------
 -- [Colores]
-local ColorMainBg = Color3.fromRGB(18, 18, 24)          -- Gris carbón oscuro
+local ColorMainBg = Color3.fromRGB(18, 18, 24)
 local ColorPanel = Color3.fromRGB(26, 26, 32)
-local ColorAccent = Color3.fromRGB(133, 65, 255)         -- Morado/acento
+local ColorAccent = Color3.fromRGB(133, 65, 255)
 local ColorButton = Color3.fromRGB(40, 38, 48)
 local ColorButtonHover = Color3.fromRGB(60, 55, 80)
 local ColorBorder = Color3.fromRGB(80, 35, 160)
@@ -37,7 +37,6 @@ local ColorFloating = Color3.fromRGB(132, 57, 251)
 
 local FONT_GAME = Enum.Font.GothamBold
 
--- Variables de control de menú
 local menuVisible = true
 local menuKey = Enum.KeyCode.RightShift
 
@@ -45,11 +44,7 @@ local menuKey = Enum.KeyCode.RightShift
 -- [Guardado de Estado original del usuario y cielo]
 local savedDisplayName = nil
 local savedUsername = nil
-local savedAppearance = nil
-local savedCharacterArchivable = nil
-local currentlySpoofed = false
-
-local savedAvatarDesc = nil
+local savedAvatarDesc = nil -- para Avatar Spoofer
 local savedUserId = nil
 local currentAvatarSpoofTarget = nil
 
@@ -219,7 +214,7 @@ ContentFrame.Parent = Panel
 
 ----------------------------------------------------------------------
 
--- [SPOOFER TAB] (Se crea primero)
+-- [SPOOFER TAB]
 local SpooferFrame = Instance.new("Frame")
 SpooferFrame.Name = "Spoofer"
 SpooferFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -229,7 +224,7 @@ tabFrames["Spoofer"] = SpooferFrame
 
 ----------------------------------------------------------------------
 
--- [WORLD TAB - Galactic Skies]
+-- [WORLD TAB]
 local WorldFrame = Instance.new("Frame")
 WorldFrame.Name = "World"
 WorldFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -251,7 +246,7 @@ tabFrames["Settings"] = SettingsFrame
 
 ----------------------------------------------------------------------
 
--- [NAVIGATION LOGIC - Corrigida]
+-- [NAVIGATION LOGIC]
 for i, tabPair in ipairs(tabs) do
     local tabText, tabKey = tabPair[1], tabPair[2]
     local btn = Instance.new("TextButton")
@@ -279,7 +274,6 @@ for i, tabPair in ipairs(tabs) do
         end
     end)
     btn.MouseButton1Click:Connect(function()
-        -- Desactivar todos los tabs salvo el actual
         for name, frame in pairs(tabFrames) do
             frame.Visible = (name == tabKey)
         end
@@ -290,8 +284,6 @@ for i, tabPair in ipairs(tabs) do
         selectedTab = tabKey
     end)
 end
-
--- Inicializa visibles solo el seleccionado (Spoofer)
 for name, frame in pairs(tabFrames) do
     frame.Visible = (name == selectedTab)
 end
@@ -301,7 +293,6 @@ end
 -- [SPOOFER UI Section]
 local pad = 18
 
--- Username
 local UsernameLabel = Instance.new("TextLabel")
 UsernameLabel.Text = "Username"
 UsernameLabel.Font = FONT_GAME
@@ -323,7 +314,6 @@ UsernameBox.Position = UDim2.new(0, pad, 0, 43)
 roundify(UsernameBox, 6)
 UsernameBox.Parent = SpooferFrame
 
--- Display Name
 local DispLabel = Instance.new("TextLabel")
 DispLabel.Text = "Display Name"
 DispLabel.Font = FONT_GAME
@@ -345,7 +335,6 @@ DispBox.Position = UDim2.new(0, pad, 0, 113)
 roundify(DispBox, 6)
 DispBox.Parent = SpooferFrame
 
--- Botones y estado
 local spoofStatus = "normal"
 local statusText = ""
 local statusLabel = Instance.new("TextLabel")
@@ -382,7 +371,6 @@ ResetBtn.Parent = SpooferFrame
 -- [Spoofer Logic]
 
 local function spoofName(username, displayName)
-    -- Solo local; no afirmar cambio real
     local success, err = pcall(function()
         if not savedUsername then savedUsername = localPlayer.Name end
         if not savedDisplayName then savedDisplayName = localPlayer.DisplayName end
@@ -406,7 +394,6 @@ local function resetName()
     end
 end
 
--- Callback para el menú de "Esc"
 StarterGui.MenuOpened:Connect(function()
     local uname = UsernameBox.Text ~= "" and UsernameBox.Text or nil
     local dname = DispBox.Text ~= "" and DispBox.Text or nil
@@ -440,11 +427,10 @@ end)
 ----------------------------------------------------------------------
 
 -- [AVATAR SPOOFER UI y Lógica]
-
 -- Por USERNAME
 local AvSection = Instance.new("Frame")
 AvSection.Name = "AvatarSection"
-AvSection.Size = UDim2.new(0, 255, 0, 90)
+AvSection.Size = UDim2.new(0, 255, 0, 85)
 AvSection.Position = UDim2.new(0, 245, 0, 20)
 AvSection.BackgroundColor3 = ColorPanel
 AvSection.BackgroundTransparency = 0.22
@@ -498,7 +484,7 @@ AvStatusLbl.Font = FONT_GAME
 AvStatusLbl.TextColor3 = ColorIndicatorOk
 AvStatusLbl.TextSize = 15
 AvStatusLbl.Size = UDim2.new(1, -16, 0, 18)
-AvStatusLbl.Position = UDim2.new(0, 8, 0, 65)
+AvStatusLbl.Position = UDim2.new(0, 8, 0, 61)
 AvStatusLbl.BackgroundTransparency = 1
 AvStatusLbl.Parent = AvSection
 
@@ -520,8 +506,8 @@ end
 -- Por USER ID
 local AvIdSection = Instance.new("Frame")
 AvIdSection.Name = "AvatarIdSection"
-AvIdSection.Size = UDim2.new(0, 255, 0, 90)
-AvIdSection.Position = UDim2.new(0, 245, 0, 120)
+AvIdSection.Size = UDim2.new(0, 255, 0, 85)
+AvIdSection.Position = UDim2.new(0, 245, 0, 115)
 AvIdSection.BackgroundColor3 = ColorPanel
 AvIdSection.BackgroundTransparency = 0.22
 AvIdSection.Parent = SpooferFrame
@@ -574,7 +560,7 @@ AvIdStatusLbl.Font = FONT_GAME
 AvIdStatusLbl.TextColor3 = ColorIndicatorOk
 AvIdStatusLbl.TextSize = 15
 AvIdStatusLbl.Size = UDim2.new(1, -16, 0, 18)
-AvIdStatusLbl.Position = UDim2.new(0, 8, 0, 65)
+AvIdStatusLbl.Position = UDim2.new(0, 8, 0, 61)
 AvIdStatusLbl.BackgroundTransparency = 1
 AvIdStatusLbl.Parent = AvIdSection
 
@@ -597,20 +583,21 @@ end
 local function saveOriginalAppearance()
     if not localPlayer.Character then return end
     savedAvatarDesc = nil
-    pcall(function()
-        local desc = Players:GetHumanoidDescriptionFromUserId(localPlayer.UserId)
+    local ok, desc = pcall(function()
+        return Players:GetHumanoidDescriptionFromUserId(localPlayer.UserId)
+    end)
+    if ok and desc then
         savedAvatarDesc = desc
         savedUserId = localPlayer.UserId
-    end)
+    end
 end
 saveOriginalAppearance()
 
 local function spoofAvatarByUserId(str_id, cb)
     cb = cb or function() end
-    -- parse id
     local userId = tonumber(str_id)
     if not userId then
-        cb("error", "ID inválido")
+        cb("error","ID inválido")
         return
     end
     cb("loading")
@@ -637,8 +624,11 @@ local function spoofAvatarByUserId(str_id, cb)
             cb("error", "Humanoid no encontrado.")
             return
         end
+    elseif not ok and desc:find("not allowed") then
+        cb("error", "No permitido por el juego.")
+        return
     else
-        cb("error", "No se pudo obtener la apariencia.")
+        cb("error","No se pudo obtener la apariencia.")
     end
 end
 
@@ -691,7 +681,6 @@ AvApplyBtn.MouseButton1Click:Connect(function()
     end
     spoofAvatarFromUsername(user, setAvatarStatus)
 end)
-
 AvResetBtn.MouseButton1Click:Connect(function()
     resetAvatar(setAvatarStatus)
 end)
@@ -708,7 +697,25 @@ AvIdResetBtn.MouseButton1Click:Connect(function()
     resetAvatar(setAvatarIdStatus)
 end)
 
+local function handleCharReset()
+    if currentAvatarSpoofTarget then
+        spoofAvatarByUserId(currentAvatarSpoofTarget, function(st,msg)
+            if st~="success" then
+                setAvatarIdStatus("error","El juego impide el spoofing localmente.")
+            end
+        end)
+    elseif savedAvatarDesc then
+        resetAvatar()
+    end
+end
+
+localPlayer.CharacterAdded:Connect(function(char)
+    wait(1)
+    handleCharReset()
+end)
+
 ----------------------------------------------------------------------
+
 -- [WORLD - Galactic Skies]
 local skyOptions = {
     ["Galaxy"] = {
@@ -902,7 +909,6 @@ local function genSkyBox(k, dat, i)
 
     ApplyBtn.MouseButton1Click:Connect(function()
         selectSky(k)
-        -- Marcar sky seleccionado visualmente
         for _, framen in ipairs(WorldFrame:GetChildren()) do
             if framen:IsA("Frame") and framen ~= box then
                 framen.BackgroundColor3 = ColorButton
@@ -929,7 +935,6 @@ RestoreSkyBtn.Parent = WorldFrame
 RestoreSkyBtn.MouseButton1Click:Connect(function()
     pcall(function() restoreOriginalSky() end)
     setSkyStatus("success", "Cielo restaurado")
-    -- Reset visual
     for _, framen in ipairs(WorldFrame:GetChildren()) do
         if framen:IsA("Frame") then
             framen.BackgroundColor3 = ColorButton
