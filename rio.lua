@@ -309,7 +309,6 @@ local SKY_PROPERTIES = {
     "SkyboxUp"
 }
 
-local originalSky = nil
 local createdSky = false
 
 local function findCurrentSky()
@@ -1111,18 +1110,34 @@ local function setSkyStatus(type, msg)
 end
 
 local function selectSky(name)
-    if not skyOptions[name] then setSkyStatus("error", "Sky desconocido"); return end
-    setSkyStatus("loading")
-    local changed = false
-    local ok = pcall(function()
-        changed = applySkybox(skyOptions[name].Skybox)
-    end)
-    if changed then
-        currentSkyName = name
-        setSkyStatus("success", "Cielo aplicado: " .. name)
-    else
-        setSkyStatus("error", "No se pudo aplicar el cielo. El juego puede estar forzando su propio cielo o bloquear cambios.")
+    local option = skyOptions[name]
+
+    if not option then
+        setSkyStatus("error", "Cielo desconocido")
+        return
     end
+
+    setSkyStatus("loading")
+
+    local ok, applied, err = pcall(function()
+        return applySkybox(option.Skybox)
+    end)
+
+    if not ok then
+        setSkyStatus("error", "Error: " .. tostring(applied))
+        return
+    end
+
+    if not applied then
+        setSkyStatus(
+            "error",
+            tostring(err or "No se pudo aplicar el cielo")
+        )
+        return
+    end
+
+    currentSkyName = name
+    setSkyStatus("success", "Cielo aplicado: " .. name)
 end
 
 local function genSkyBox(k, dat)
