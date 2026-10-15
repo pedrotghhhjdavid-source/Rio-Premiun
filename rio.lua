@@ -1,47 +1,61 @@
+--[[
 YABUJIN | REAL EXECUTOR | LOCAL VISUAL USERNAME, DISPLAYNAME & AVATAR SPOOFER
 Este módulo te permite modificar EL NOMBRE ENCIMA DE TU PERSONAJE y TU APARIENCIA solo de forma visual/local. NO cambia datos oficiales del servidor ni lo que ven otros jugadores.
 Botones y campos añadidos funcionan en la pestaña "Avatar" y aplican directamente a tu personaje local.
 Más abajo tienes un resumen de funciones logradas y limitaciones.
 ]]
 
--- ========== [INJECTED SECTION: VISUAL ON-CHARACTER SPOOFERS] =========== --
+-- ========== DEFINICIÓN DE VARIABLES, VALIDACIONES Y FUNCIONES UTILS =========
 
--- Para evitar problemas de duplicado al reejecutar:
+-- Function stubs for required objects if not present
+if not game or not game.Players then
+	error("Roblox game environment is required for this script.")
+end
+
+local LocalPlayer = LocalPlayer or game.Players.LocalPlayer
+local protect = protect or function(cb) local ok, _ = pcall(cb) end
+local state = state or { username = nil, displayName = nil }
+local body = body
+local textbox = textbox
+local button = button
+local label = label
+local C = C or { green=Color3.fromRGB(60,240,120), red=Color3.fromRGB(220,60,60) }
+
+-- ========== IMPLEMENTACIÓN FUNCIONAL PRINCIPAL ==========
+
+-- Evitar duplicidad de GUIs si se reejecuta el script
 do
-	local char = LocalPlayer and LocalPlayer.Character or (game and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character)
-	if char and char:FindFirstChild("Head") and char.Head:FindFirstChild("Yabujin_OverheadGui") then
-		local protect = protect or function(cb) local ok, _ = pcall(cb) end
-		protect(function() char.Head.Yabujin_OverheadGui:Destroy() end)
+	local char = LocalPlayer and LocalPlayer.Character
+	if char and char:FindFirstChild("Head") then
+		local oldGui = char.Head:FindFirstChild("Yabujin_OverheadGui")
+		if oldGui then
+			protect(function() oldGui:Destroy() end)
+		end
 	end
 end
 
--- Guarda el aspecto original para restaurar
 local originalAppearance = {
-	desc = nil,      -- HumanoidDescription original (en sesión)
-	stored = nil,    -- Clon original del character (por si acaso)
-	ready = false,   -- Marca si hemos cacheado ya
+	desc = nil,
+	ready = false,
 }
 
--- Últimos datos spoof aplicados para persistir en respawn
 local appliedSpoof = {
 	username = nil,
 	displayName = nil,
-	userId = nil, -- avatar spoof
+	userId = nil,
 }
 
--- Helper: Validación para UserId
 local function isValidUserId(str)
 	local n = tonumber(str)
 	return n and n >= 1 and math.floor(n) == n
 end
-
--- ========= Crear y mantener BillboardGui overhead para Nombre/DisplayName ========
 
 local function getOrCreateOverheadGui(targetChar)
 	if not targetChar or not targetChar:FindFirstChild("Head") then return nil end
 	local head = targetChar:FindFirstChild("Head")
 	local gui = head:FindFirstChild("Yabujin_OverheadGui")
 	if gui then return gui end
+
 	gui = Instance.new("BillboardGui")
 	gui.Name = "Yabujin_OverheadGui"
 	gui.Size = UDim2.new(0, 220, 0, 45)
@@ -50,7 +64,6 @@ local function getOrCreateOverheadGui(targetChar)
 	gui.AlwaysOnTop = true
 	gui.Parent = head
 
-	-- Username label (arriba)
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "SpoofedName"
 	nameLabel.Size = UDim2.new(1, 0, 0, 22)
@@ -59,46 +72,56 @@ local function getOrCreateOverheadGui(targetChar)
 	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.TextStrokeTransparency = 0.75
 	nameLabel.TextColor3 = Color3.fromRGB(213,234,241)
-	nameLabel.TextStrokeColor3 = Color3.fromRGB(20,40,60)
+	nameLabel.TextStrokeColor3 = Color3.fromRGB(15,24,54)
 	nameLabel.TextScaled = true
 	nameLabel.Text = ""
 	nameLabel.Parent = gui
 
-	-- DisplayName label (abajo más pequeño)
-	local dispLabel = Instance.new("TextLabel")
-	dispLabel.Name = "SpoofedDisplay"
-	dispLabel.Size = UDim2.new(1, 0, 0, 18)
-	dispLabel.Position = UDim2.new(0, 0, 0, 23)
-	dispLabel.BackgroundTransparency = 1
-	dispLabel.Font = Enum.Font.Gotham
-	dispLabel.TextStrokeTransparency = 0.82
-	dispLabel.TextColor3 = Color3.fromRGB(180,180,200)
-	dispLabel.TextStrokeColor3 = Color3.fromRGB(36,36,44)
-	dispLabel.TextScaled = true
-	dispLabel.Text = ""
-	dispLabel.Parent = gui
+	local displayLabel = Instance.new("TextLabel")
+	displayLabel.Name = "SpoofedDisplay"
+	displayLabel.Size = UDim2.new(1, 0, 0, 17)
+	displayLabel.Position = UDim2.new(0, 0, 0, 22)
+	displayLabel.BackgroundTransparency = 1
+	displayLabel.Font = Enum.Font.Gotham
+	displayLabel.TextStrokeTransparency = 0.8
+	displayLabel.TextColor3 = Color3.fromRGB(245,235,190)
+	displayLabel.TextStrokeColor3 = Color3.fromRGB(40,30,20)
+	displayLabel.TextScaled = true
+	displayLabel.Text = ""
+	displayLabel.Parent = gui
 
 	return gui
 end
 
--- Actualizar overhead visual con los nombres spoof
-function updateOverhead(username, displayName)
+local function updateOverhead(username, displayName)
 	local char = LocalPlayer and LocalPlayer.Character
 	if not char then return end
 	local gui = getOrCreateOverheadGui(char)
-	if gui then
-		local nameLabel = gui:FindFirstChild("SpoofedName")
-		local displayLabel = gui:FindFirstChild("SpoofedDisplay")
-		if nameLabel then
-			nameLabel.Text = username or ""
-		end
-		if displayLabel then
-			displayLabel.Text = displayName or ""
-		end
-	end
+	if not gui then return end
+	local nameLabel = gui:FindFirstChild("SpoofedName")
+	local displayLabel = gui:FindFirstChild("SpoofedDisplay")
+	if nameLabel then nameLabel.Text = tostring(username or "") end
+	if displayLabel then displayLabel.Text = tostring(displayName or "") end
 end
 
--- ========== Avatar Spoof por UserId seguro y robusto ==============
+local function showErrorMsg(msg)
+	if not (body and label) then
+		warn("[VISUAL SPOOF] "..msg)
+		return
+	end
+	for _, child in ipairs(body:GetChildren()) do
+		if child:IsA("TextLabel") and child.Name == "ErrorLabel" then
+			child:Destroy()
+		end
+	end
+	local lbl = label(body, "[Visual Error] "..tostring(msg), 11, true, C.red)
+	lbl.Name = "ErrorLabel"
+	lbl.Size = UDim2.new(1,0,0,19)
+	task.delay(2.5, function()
+		if lbl and lbl.Parent then lbl:Destroy() end
+	end)
+end
+
 local function applyAvatarSpoof(userId)
 	if not isValidUserId(userId) then
 		showErrorMsg("UserId inválido para visual avatar spoof.")
@@ -110,6 +133,7 @@ local function applyAvatarSpoof(userId)
 		showErrorMsg("Humanoid no encontrado.")
 		return
 	end
+
 	local desc
 	local success, err = pcall(function()
 		desc = game.Players:GetHumanoidDescriptionFromUserId(userId)
@@ -128,7 +152,6 @@ local function applyAvatarSpoof(userId)
 	appliedSpoof.userId = tonumber(userId)
 end
 
--- ========== Cachear y restaurar HumanoidDescription original ==============
 do
 	local function cacheOriginal()
 		local char = LocalPlayer and LocalPlayer.Character
@@ -138,11 +161,8 @@ do
 			originalAppearance.ready = true
 		end
 	end
-	-- Cachear al cargar
 	if LocalPlayer and LocalPlayer.Character then cacheOriginal() end
-	if LocalPlayer and LocalPlayer.CharacterAdded then
-		LocalPlayer.CharacterAdded:Connect(cacheOriginal)
-	end
+	if LocalPlayer then LocalPlayer.CharacterAdded:Connect(cacheOriginal) end
 end
 
 local function restoreOriginalAvatar()
@@ -165,19 +185,14 @@ local function restoreOriginalAvatar()
 	appliedSpoof.userId = nil
 end
 
--- ========== Actualiza overhead y avatar tras respawn; limpia GUIs duplicados ==========
-if LocalPlayer and LocalPlayer.CharacterAdded then
+if LocalPlayer then
 	LocalPlayer.CharacterAdded:Connect(function(char)
 		task.defer(function()
 			local head = char:FindFirstChild("Head")
 			if head then
 				for _, g in pairs(head:GetChildren()) do
 					if g:IsA("BillboardGui") and g.Name == "Yabujin_OverheadGui" then
-						if protect then
-							protect(function() g:Destroy() end)
-						else
-							pcall(function() g:Destroy() end)
-						end
+						protect(function() g:Destroy() end)
 					end
 				end
 			end
@@ -192,7 +207,6 @@ if LocalPlayer and LocalPlayer.CharacterAdded then
 	end)
 end
 
--- Al cargar primera vez, aplica nombre/Display si está seteado
 if LocalPlayer and LocalPlayer.Character then
 	task.defer(function()
 		updateOverhead(appliedSpoof.username or state.username or LocalPlayer.Name,
@@ -200,25 +214,9 @@ if LocalPlayer and LocalPlayer.Character then
 	end)
 end
 
--- ========== INTEGRACIÓN CON LA INTERFAZ Y BOTONES ==================
--- Asegura que los elementos de UI invocan sus callbacks reales.
+-- ========== UI INTEGRATION ==========
 
--- Asegúrate de que las siguientes referencias existen previamente:
--- LocalPlayer: el Player local, debería estar definido en un entorno de exploit para Roblox
--- protect: función protect(callback), definida antes en el script para manejar errores de destrucción de GUIs, etc.
--- state: tabla para persistencia de spoof local (siempre usada para valores por defecto)
-if not LocalPlayer and game and game.Players then
-	LocalPlayer = game.Players.LocalPlayer
-end
-if not protect then
-	protect = function(cb) local ok, _ = pcall(cb) end
-end
-if not state then
-	state = { username = nil, displayName = nil }
-end
-
--- Username spoof visual
-if textbox then
+if textbox and body then
 	textbox(body, "Username", function(text)
 		appliedSpoof.username = text
 		state.username = text
@@ -227,10 +225,7 @@ if textbox then
 			appliedSpoof.displayName or state.displayName or (LocalPlayer and LocalPlayer.DisplayName)
 		)
 	end)
-end
 
--- DisplayName spoof visual
-if textbox then
 	textbox(body, "DisplayName", function(text)
 		appliedSpoof.displayName = text
 		state.displayName = text
@@ -239,10 +234,7 @@ if textbox then
 			text
 		)
 	end)
-end
 
--- UserId para avatar spoof visual
-if textbox then
 	textbox(body, "UserId", function(text)
 		if isValidUserId(text) then
 			local success, err = pcall(function()
@@ -257,8 +249,7 @@ if textbox then
 	end)
 end
 
--- Botón para restaurar apariencia original y limpiar feedback
-if button then
+if button and body then
 	button(body, "Restaurar apariencia original", function()
 		local ok, err = pcall(function()
 			restoreOriginalAvatar()
@@ -268,7 +259,6 @@ if button then
 		appliedSpoof.displayName = nil
 		state.username = nil
 		state.displayName = nil
-		-- Limpia labels previas de feedback
 		for _, child in ipairs(body:GetChildren()) do
 			if child:IsA("TextLabel") and child.Name == "FeedbackLabel" then
 				child:Destroy()
@@ -280,7 +270,6 @@ if button then
 	end)
 end
 
--- ========== Manejo global si APIs no existen ==========
 if not (game and game.Players and game.Players.GetHultc1qalrd99hju33uagsf8927k7xfxr423gr93gnjz8 and Instance and Instance.new) then
 	showErrorMsg("Esta versión de Roblox o Real Executor NO soporta spoof visual de avatar por UserId.")
 end
