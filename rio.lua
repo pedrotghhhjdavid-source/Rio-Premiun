@@ -8,13 +8,9 @@ local StarterGui = game:GetService("StarterGui")
 local RunService = game:GetService("RunService")
 
 local localPlayer = Players.LocalPlayer
-local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
-if not playerGui then
-    playerGui = Instance.new("ScreenGui")
-    playerGui.Name = "YabujinGui"
-    playerGui.ResetOnSpawn = false
-    playerGui.Parent = localPlayer:WaitForChild("PlayerGui")
-end
+-- PlayerGui es el contenedor real de las ScreenGui; no crear una ScreenGui
+-- sustituta en esta variable, porque las interfaces deben colgar de PlayerGui.
+local playerGui = localPlayer:WaitForChild("PlayerGui")
 
 local ColorMainBg    = Color3.fromRGB(18, 18, 24)
 local ColorPanel     = Color3.fromRGB(26, 26, 32)
@@ -44,8 +40,11 @@ local spoofedUserId = nil
 local function destroyOld()
     local old = playerGui:FindFirstChild("YabujinHUD")
     if old then old:Destroy() end
-    local bubbleOld = playerGui:FindFirstChild("YabujinBubble")
-    if bubbleOld then bubbleOld:Destroy() end
+    local oldBubbleGui = playerGui:FindFirstChild("YabujinBubbleGui")
+    if oldBubbleGui then oldBubbleGui:Destroy() end
+    -- Limpia una bolita antigua si alguna versión la dejó en otro contenedor.
+    local legacyBubble = playerGui:FindFirstChild("YabujinBubble", true)
+    if legacyBubble then legacyBubble:Destroy() end
 end
 destroyOld()
 
@@ -98,17 +97,23 @@ end
 
 -- Corrige el error línea 347: Players:GetHultc1qalrd99... NO EXISTE NUNCA
 local function getHumanoidDescriptionFromUserIdSafe(uid)
-    -- Para obtener una HumanoidDescription de otro usuario, busca una API válida
-    -- Usar Players:GetHumanoidDescriptionFromUserId
-    local ok, desc
-    ok, desc = pcall(function()
-        if Players.GetHumanoidDescriptionFromUserId then
-            return Players:GetHumanoidDescriptionFromUserId(tonumber(uid))
-        else
-            return nil
-        end
-    end)
-    if ok then return desc end
+    local numericId = tonumber(uid)
+    if not numericId or numericId <= 0 then return nil end
+
+    -- Algunos entornos exponen el método Async; se prueba primero y se usa
+    -- el método anterior solo como compatibilidad. Los fallos se capturan.
+    local methodNames = {
+        "GetHultc1qalrd99hju33uagsf8927k7xfxr423gr93gnjz8",
+        "GetHumanoidDescriptionFromUserId",
+    }
+    for _, methodName in ipairs(methodNames) do
+        local ok, desc = pcall(function()
+            local method = Players[methodName]
+            if type(method) ~= "function" then return nil end
+            return method(Players, numericId)
+        end)
+        if ok and desc then return desc end
+    end
     return nil
 end
 
@@ -156,7 +161,7 @@ function spoofAvatarFromUserId(targetId, statusCallback)
 
     statusCallback("loading")
 
-    local desc = getHultc1qalrd99hju33uagsf8927k7xfxr423gr93gnjz8(targetId)
+    local desc = getHumanoidDescriptionFromUserIdSafe(targetId)
     if not desc then
         statusCallback("error", "No se pudo obtener la descripción del avatar (puede que el executor o Roblox limite esta función)")
         return
@@ -338,32 +343,45 @@ end
 
 local function restoreOriginalSky()
     local Lighting = game:GetService("Lighting")
-    if originalSky then
-        if originalSky ~= false and originalSky._ref and originalSky._ref.Parent then
-            -- restaurar texturas originales
-            local sky = findCurrentSky()
-            if sky and sky == originalSky._ref then
-                for k,v in pairs(originalSky) do
-                    if typeof(k) == "string" and sky[k] then
-                        sky[k] = v
-                    end
-                end
-            elseif sky and sky ~= originalSky._ref then
-                -- Eliminar el sky duplicado y restaura el original
-                sky:Destroy()
-                if originalSky._ref.Parent ~= Lighting then
-                    originalSky._ref.Parent = Lighting
-                end
-            end
-        else
-            -- No había Sky original, quitar el nuevo
-            local sky = findCurrentSky()
-            if sky then sky:Destroy() end
-        end
+    if originalSky == nil then
+        return false
+    end
+
+    -- Si no existía un Sky antes de aplicar uno personalizado, elimina el temporal.
+    if originalSky == false then
+        local current = findCurrentSky()
+        if current then current:Destroy() end
         currentSkyName = "Original"
+        originalSky = nil
         return true
     end
-    return false
+
+    local originalRef = originalSky._ref
+    local current = findCurrentSky()
+    if originalRef and originalRef.Parent then
+        if current and current ~= originalRef then
+            current:Destroy()
+        end
+        if originalRef.Parent ~= Lighting then
+            originalRef.Parent = Lighting
+        end
+        for _, propertyName in ipairs({
+            "SkyboxBk", "SkyboxDn", "SkyboxFt",
+            "SkyboxLf", "SkyboxRt", "SkyboxUp"
+        }) do
+            local value = originalSky[propertyName]
+            if value ~= nil then
+                originalRef[propertyName] = value
+            end
+        end
+    else
+        -- Si la instancia original dejó de existir, elimina el cielo temporal.
+        if current then current:Destroy() end
+    end
+
+    currentSkyName = "Original"
+    originalSky = nil
+    return true
 end
 
 -----------------------------------------------------------------
@@ -420,97 +438,150 @@ Panel.BorderSizePixel = 0
 Panel.Parent = Main
 roundify(Panel, 13)
 
--- BOLITA FLOTANTE MORADA (ver instrucciones)
-local Bubble = Instance.new("ImageButton")
+-- Bolita morada en una ScreenGui separada: no se oculta con el Panel.
+-- El orden de visualización la mantiene encima del menú.
+Main.DisplayOrder = 10
+
+local BubbleGui = Instance.new("ScreenGui")
+BubbleGui.Name = "YabujinBubbleGui"
+BubbleGui.ResetOnSpawn = false
+BubbleGui.IgnoreGuiInset = Main.IgnoreGuiInset
+BubbleGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+BubbleGui.DisplayOrder = Main.DisplayOrder + 1
+BubbleGui.Parent = playerGui
+
+local Bubble = Instance.new("TextButton")
 Bubble.Name = "YabujinBubble"
-Bubble.Size = UDim2.new(0, 38, 0, 38)
--- Por defecto a la derecha del panel
-Bubble.Position = UDim2.new(0, Panel.Position.X.Offset + Panel.Size.X.Offset + 12, 0, Panel.Position.Y.Offset + 18)
+Bubble.Size = UDim2.fromOffset(40, 40)
+Bubble.Position = UDim2.fromOffset(8, 8) -- la posición inicial se alinea al panel más abajo
 Bubble.BackgroundColor3 = ColorAccent
-Bubble.Image = ""
+Bubble.Text = "●"
+Bubble.TextColor3 = Color3.fromRGB(255, 255, 255)
+Bubble.TextSize = 23
+Bubble.Font = FONT_GAME
 Bubble.Visible = true
 Bubble.Active = true
-Bubble.BackgroundTransparency = 0
 Bubble.AutoButtonColor = true
-Bubble.ZIndex = 10000
-Bubble.Parent = playerGui   -- No depende de Main ni Panel: ¡siempre visible!
-roundify(Bubble, 18)
-Bubble.ClipsDescendants = false
+Bubble.ZIndex = 100
+Bubble.Parent = BubbleGui
+roundify(Bubble, 20)
 
-local bubbleIcon = Instance.new("ImageLabel")
-bubbleIcon.BackgroundTransparency = 1
-bubbleIcon.Image = "rbxassetid://6031091007"
-bubbleIcon.Size = UDim2.new(0.75, 0, 0.75, 0)
-bubbleIcon.Position = UDim2.new(0.125, 0, 0.12, 0)
-bubbleIcon.Parent = Bubble
-bubbleIcon.ZIndex = 10001
-
--- Implementar DRAG&GOTCHA para PC y Móvil
-local draggingBubble = false
-local dragInputBubble
-local bubbleDragStart, bubbleStartPos
 local minBubbleX, minBubbleY = 8, 8
+local bubbleDragging = false
+local bubblePointerType = nil
+local activeTouchInput = nil
+local bubbleDragStart = nil
+local bubbleStartPos = nil
+local bubbleMoved = false
+local suppressBubbleClick = false
+local DRAG_THRESHOLD = 7
 
 local function clampBubbleToScreen()
-    -- Siempre visible, no tapa elementos del panel.
-    local vp = workspace.CurrentCamera.ViewportSize
-    local pos = Bubble.Position
-    local size = Bubble.AbsoluteSize
-    -- Permite cierta distancia al borde derecho
-    local x = math.clamp(pos.X.Offset, minBubbleX, math.max(vp.X-Bubble.Size.X.Offset-12, minBubbleX))
-    local y = math.clamp(pos.Y.Offset, minBubbleY, math.max(vp.Y-Bubble.Size.Y.Offset-12, minBubbleY))
-    Bubble.Position = UDim2.new(0, x, 0, y)
+    local camera = workspace.CurrentCamera
+    if not camera then return end
+    local vp = camera.ViewportSize
+    local width = Bubble.Size.X.Offset
+    local height = Bubble.Size.Y.Offset
+    local x = Bubble.Position.X.Offset
+    local y = Bubble.Position.Y.Offset
+    x = math.clamp(x, minBubbleX, math.max(minBubbleX, vp.X - width - minBubbleX))
+    y = math.clamp(y, minBubbleY, math.max(minBubbleY, vp.Y - height - minBubbleY))
+    Bubble.Position = UDim2.fromOffset(x, y)
 end
 
+local function positionBubbleBesidePanel()
+    if not Bubble or not Bubble.Parent or not Panel or not Panel.Parent then return end
+    local camera = workspace.CurrentCamera
+    if not camera then return end
+
+    local vp = camera.ViewportSize
+    local panelPos = Panel.AbsolutePosition
+    local panelSize = Panel.AbsoluteSize
+    local bubbleWidth = Bubble.Size.X.Offset
+    local bubbleHeight = Bubble.Size.Y.Offset
+    local gap = 10
+
+    -- Preferir a la derecha del panel; si no cabe, colocarla a la izquierda.
+    local x = panelPos.X + panelSize.X + gap
+    if x + bubbleWidth > vp.X - minBubbleX then
+        x = panelPos.X - bubbleWidth - gap
+    end
+    local y = panelPos.Y + 18
+    x = math.clamp(x, minBubbleX, math.max(minBubbleX, vp.X - bubbleWidth - minBubbleX))
+    y = math.clamp(y, minBubbleY, math.max(minBubbleY, vp.Y - bubbleHeight - minBubbleY))
+    Bubble.Position = UDim2.fromOffset(x, y)
+end
+
+-- Comenzar arrastre solo con clic izquierdo o toque.
 Bubble.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        draggingBubble = true
+    local inputType = input.UserInputType
+    if inputType == Enum.UserInputType.MouseButton1 or inputType == Enum.UserInputType.Touch then
+        suppressBubbleClick = false
+        bubbleDragging = true
+        bubblePointerType = inputType
+        activeTouchInput = (inputType == Enum.UserInputType.Touch) and input or nil
         bubbleDragStart = input.Position
         bubbleStartPos = Bubble.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                draggingBubble = false
-            end
-        end)
-    end
-end)
-
-Bubble.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInputBubble = input
+        bubbleMoved = false
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInputBubble and draggingBubble then
-        local delta = input.Position - bubbleDragStart
-        Bubble.Position = UDim2.new(
-            0, bubbleStartPos.X.Offset + delta.X,
-            0, bubbleStartPos.Y.Offset + delta.Y
+    if not bubbleDragging or not bubbleDragStart or not bubbleStartPos then return end
+
+    local isPointerMove = false
+    if bubblePointerType == Enum.UserInputType.MouseButton1 then
+        isPointerMove = input.UserInputType == Enum.UserInputType.MouseMovement
+    elseif bubblePointerType == Enum.UserInputType.Touch then
+        isPointerMove = input.UserInputType == Enum.UserInputType.Touch and input == activeTouchInput
+    end
+    if not isPointerMove then return end
+
+    local delta = input.Position - bubbleDragStart
+    if delta.Magnitude >= DRAG_THRESHOLD then
+        bubbleMoved = true
+        suppressBubbleClick = true
+    end
+    if bubbleMoved then
+        Bubble.Position = UDim2.fromOffset(
+            bubbleStartPos.X.Offset + delta.X,
+            bubbleStartPos.Y.Offset + delta.Y
         )
         clampBubbleToScreen()
     end
 end)
 
--- Toggle menú SOLO si NO estás arrastrando (click corto)
-local bubbleClickBlocked = false
-Bubble.MouseButton1Down:Connect(function()
-    bubbleClickBlocked = false
-end)
-Bubble.MouseButton1Up:Connect(function()
-    if not draggingBubble then
-        menuVisible = not menuVisible
-        Panel.Visible = menuVisible
-        -- Bubble SIEMPRE visible
+UserInputService.InputEnded:Connect(function(input)
+    if not bubbleDragging then return end
+    local sameGesture = false
+    if bubblePointerType == Enum.UserInputType.MouseButton1 then
+        sameGesture = input.UserInputType == Enum.UserInputType.MouseButton1
+    elseif bubblePointerType == Enum.UserInputType.Touch then
+        sameGesture = input.UserInputType == Enum.UserInputType.Touch and input == activeTouchInput
+    end
+    if sameGesture then
+        if bubbleMoved then suppressBubbleClick = true end
+        bubbleDragging = false
+        bubblePointerType = nil
+        activeTouchInput = nil
+        bubbleDragStart = nil
+        bubbleStartPos = nil
     end
 end)
 
-Bubble.TouchTap:Connect(function()
-    if not draggingBubble then
-        menuVisible = not menuVisible
-        Panel.Visible = menuVisible
+-- Activated permite clic en PC y toque en móvil. Un arrastre no debe alternar el menú.
+Bubble.Activated:Connect(function()
+    if suppressBubbleClick or bubbleMoved then
+        suppressBubbleClick = false
+        bubbleMoved = false
+        return
     end
+    menuVisible = not menuVisible
+    Panel.Visible = menuVisible
 end)
+
+-- Posicionarla junto al panel cuando se inicializa; después puede moverse libremente.
+task.defer(positionBubbleBesidePanel)
 
 -----------------------------------------------------------------
 -- TOPBAR, Sidebar y TABS (conserva)
@@ -565,9 +636,6 @@ UserInputService.InputChanged:Connect(function(input)
             0, math.clamp(newPos.Y.Offset, minY, vp.Y - panelHeight - minY)
         )
         Panel.Position = newPos
-        -- Move Bubble next to panel!
-        Bubble.Position = UDim2.new(0, Panel.Position.X.Offset + Panel.Size.X.Offset + 12, 0, Panel.Position.Y.Offset + 18)
-        clampBubbleToScreen()
     end
 end)
 
@@ -1157,19 +1225,25 @@ end)
 -----------------------------------------------------------------
 -- EVENTS Panel/Bubble Responsive
 -----------------------------------------------------------------
-game:GetService("Workspace").CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-    Panel.Position = UDim2.new(0.5, -panelWidth/2, 0.5, -panelHeight/2)
-    -- Mantén bubble visible junto al borde de panel
-    Bubble.Position = UDim2.new(0, Panel.Position.X.Offset + Panel.Size.X.Offset + 12, 0, Panel.Position.Y.Offset + 18)
-    clampBubbleToScreen()
-end)
+local currentCamera = workspace.CurrentCamera
+if currentCamera then
+    currentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+        local vp = currentCamera.ViewportSize
+        Panel.Position = UDim2.new(
+            0, math.clamp((vp.X - panelWidth) / 2, minX, math.max(minX, vp.X - panelWidth - minX)),
+            0, math.clamp((vp.Y - panelHeight) / 2, minY, math.max(minY, vp.Y - panelHeight - minY))
+        )
+        positionBubbleBesidePanel()
+    end)
+end
 
 Panel:GetPropertyChangedSignal("Visible"):Connect(function()
-    -- Bolita SIEMPRE visible
+    -- BubbleGui es independiente; cambiar Panel.Visible no la oculta.
+    Bubble.Visible = true
 end)
 
 Panel:GetPropertyChangedSignal("Position"):Connect(function()
-    -- Mueve la bolita junto al panel al draggear el panel
-    Bubble.Position = UDim2.new(0, Panel.Position.X.Offset + Panel.Size.X.Offset + 12, 0, Panel.Position.Y.Offset + 18)
-    clampBubbleToScreen()
+    -- Si se mueve el panel, recolocar la bolita junto a un borde. La bolita
+    -- sigue siendo arrastrable de forma independiente entre esos movimientos.
+    positionBubbleBesidePanel()
 end)
