@@ -1,1334 +1,609 @@
---!nocheck
---!native
+-- YABUJIN | REAL EXECUTOR - LOCAL VISUAL UI
+-- Paste this entire file into your executor OR host it on your own raw-text URL.
+-- Important: this changes client-side UI/visuals only. It cannot change Rivals server identity,
+-- official level, contracts, currencies, platform detection, leaderboard, or other players' views.
 
---[[                              ...,...,..................                               
-                      ,,,,........,.,...,...........,.,...............,                   
-                 *,,,,,,.,,,,,,,,,,,,,,,,,,,.......,,.,.................,,.               
-                *,,,,,.,,........,,,,,,,,,,,,,,,,,,,,,,,,...............,,,               
-                ,,,,,,,,,,,,,,,,,....,,,,,,,,,,,,,,,,,.....,,,,,,........,,,              
-                ,,,,,,,*&@@@@@%,,/(**...,,,,,,,,,,,...,**,,,/%&@&%*....,,.,,              
-                ,,,,&@(/(((((&@@@@@@@,%*,,,*,*,,,,,**,@@@@@@@@(//////&%...,,              
-               ,,,,/,,,,,,,,,,,*(/#@@@@@(%,****,**@@@@@@#(/*,,,,,,,...,/..,,              
-               *,,,,,,,,,,,,*******///(@#/******(@@@///*****,,,,,,,,,,,,.,,,              
-               *,,,,****************//////*,,,,,****/*************,,,,,,,,,,              
-               ,,,*******///    .//////***,,....,**//**/**    .****,**,,,,,,              
-               .,,,***//              ***,,.....,,,*/             ,****,,,,,              
-               ,,,,,,,,**//********,,,,,,,.......,,,,,*************,...,,,,,(             
-               *,,,,,,,,,,,,,,,,...,,,,,,,.........,,,,......,,,,,,,,,..,.,,&             
-               #,,******,,,,,,,,,,,,,,,,,,.......,.,.....,,,,,,,,,,,,,,,,,,,#             
-                **/////*****,,,,,,,,,,,,,,..........,,,,,,,,,,,,,,,*******,,              
-                ***////////********,,,,,,,.........,,.,*************///***,,              
-                ****/////////////**,,,,,*,,,,,,,,,,,,,.,,/////**********,*,,              
-                ***//////////*,,,,***//****/*//*********,,,,,*((/////*/*,,,               
-                *****//@@**,,,,,,,,**/(/########%&///*,,,,,,,,,/*@@/***,,,,               
-                 *******@@@**,,,,,,**(/@@@@@@@@@@@@/(**,,***/#/@@@***,,,,,                
-                 *********@@@@@@&%@@@@@@@@@(((%@@@@@@@@@&%@@@@@@*,**,,,,,,                
-                 .***********//##%&@@@@@@(#////(#@@@@@@&%#///******,,*,,,                 
-                  **************,,,,***/**************,,,,******,,***,,,                  
-                   ,**********/////////**//////////////*************,,,                   
-                     ************///////((@@@@@@%(/******************                     
-                       **********//**////(@@@@@@/*****************,                       
-                         ****************(@@@@@@/**,************                          
-                            *************(&@@@@@/*************                            
-                              ,**********/%@@@@&/**********                               
-                                  */*//////@@@&%////****                                  
-                                     //////&@@&/////*   
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local Stats = game:GetService("Stats")
+local LocalPlayer = Players.LocalPlayer
+if not LocalPlayer then return end
 
-
------------------------------------------------------------------
-
-                    discord.gg/vKXWdGT8pc                        
-
------------------------------------------------------------------
-
-]]
-
-local arguments = table.pack(...)
-local sharedEnv = getgenv and getgenv() or _G
-local previous = rawget(sharedEnv, 'Unnamed Enhancements - Cracked')
-
-if type(previous) == 'table' and (previous.status == 'starting' or previous.status == 'entry_returned') then
-    return previous
-end
-if rawget(sharedEnv, 'UE_LOADED') == true then
-    return previous
+local function protect(fn, ...)
+    local ok, result = pcall(fn, ...)
+    if ok then return result end
+    return nil
 end
 
-local control = {
-    status = 'starting',
-    started = os.clock(),
-    error = nil,
-    stopped = false,
+-- Parent to executor UI container when available; otherwise use PlayerGui.
+local uiParent
+if typeof(gethui) == "function" then
+    uiParent = protect(gethui)
+end
+if not uiParent then
+    uiParent = protect(function() return game:GetService("CoreGui") end)
+end
+if not uiParent then
+    uiParent = LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local previous = uiParent:FindFirstChild("YabujinRealVisualUI")
+if previous then protect(function() previous:Destroy() end) end
+
+local C = {
+    bg = Color3.fromRGB(13, 13, 16),
+    panel = Color3.fromRGB(22, 22, 27),
+    panel2 = Color3.fromRGB(29, 29, 35),
+    purple = Color3.fromRGB(139, 87, 255),
+    purpleDark = Color3.fromRGB(54, 37, 83),
+    text = Color3.fromRGB(242, 241, 248),
+    muted = Color3.fromRGB(157, 155, 169),
+    border = Color3.fromRGB(55, 53, 65),
+    green = Color3.fromRGB(120, 230, 165),
 }
 
-sharedEnv['Unnamed Enhancements - Cracked'] = control
+local state = {
+    level = "14",
+    username = LocalPlayer.Name,
+    displayName = LocalPlayer.DisplayName,
+    userId = tostring(LocalPlayer.UserId),
+    avatarId = tostring(LocalPlayer.UserId),
+    platform = "PC",
+    contractName = "Assault Rifle",
+    eliminations = "33",
+    playtime = "1222",
+    keys = "29",
+    tokens = "0",
+    extraStats = "",
+    theme = "Default",
+    fov = 70,
+    noHands = false,
+    levelEnabled = false,
+    identityPreview = false,
+    avatarPreview = false,
+    platformEnabled = false,
+    contractsEnabled = false,
+    resourcesEnabled = false,
+}
 
-local previousLoaded = rawget(sharedEnv, 'UE_LOADED')
-local previousLibrary = rawget(sharedEnv, 'Library')
-local previousOptions = rawget(sharedEnv, 'Options')
-local previousToggles = rawget(sharedEnv, 'Toggles')
-local budgets = setmetatable({}, {
-    __mode = 'k',
-})
-local schedulerFrame = 0
-local heartbeatConnection
+local gui = Instance.new("ScreenGui")
+gui.Name = "YabujinRealVisualUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+protect(function() gui.DisplayOrder = 999999 end)
+gui.Parent = uiParent
 
-local function __step(id)
-    if control.stopped then
-        error('execution stopped', 0)
+local function new(className, props, parent)
+    local obj = Instance.new(className)
+    for k, v in pairs(props or {}) do
+        protect(function() obj[k] = v end)
     end
-
-    local thread = coroutine.running()
-    local state = budgets[thread]
-
-    if not state then
-        local now = os.clock()
-
-        state = {
-            ticks = 0,
-            frame = schedulerFrame,
-            started = now,
-        }
-        budgets[thread] = state
+    obj.Parent = parent
+    return obj
+end
+local function corner(obj, radius)
+    new("UICorner", {CornerRadius = UDim.new(0, radius or 6)}, obj)
+end
+local function outline(obj, color, thickness)
+    new("UIStroke", {Color = color or C.border, Thickness = thickness or 1, Transparency = 0.08}, obj)
+end
+local function label(parent, txt, size, bold, color)
+    return new("TextLabel", {
+        BackgroundTransparency = 1,
+        Text = txt or "",
+        TextColor3 = color or C.text,
+        Font = bold and Enum.Font.GothamBold or Enum.Font.Code,
+        TextSize = size or 12,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Center,
+    }, parent)
+end
+local function button(parent, txt, height, callback)
+    local b = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, height or 30),
+        BackgroundColor3 = C.panel2,
+        Text = txt or "Button",
+        TextColor3 = C.text,
+        Font = Enum.Font.GothamMedium,
+        TextSize = 12,
+        AutoButtonColor = true,
+        TextWrapped = true,
+    }, parent)
+    corner(b, 5); outline(b)
+    if callback then b.Activated:Connect(callback) end
+    return b
+end
+local inputControls = {}
+local toggleControls = {}
+local function input(parent, caption, initial, placeholder, callback, stateKey)
+    local wrap = new("Frame", {Size = UDim2.new(1, 0, 0, 54), BackgroundTransparency = 1}, parent)
+    local title = label(wrap, caption, 11, false, C.muted)
+    title.Position = UDim2.new(0, 1, 0, 0)
+    title.Size = UDim2.new(1, 0, 0, 18)
+    local box = new("TextBox", {
+        Position = UDim2.new(0, 0, 0, 21), Size = UDim2.new(1, 0, 0, 30),
+        BackgroundColor3 = C.panel2, TextColor3 = C.text, PlaceholderColor3 = C.muted,
+        Text = tostring(initial or ""), PlaceholderText = placeholder or "Enter value",
+        ClearTextOnFocus = false, TextXAlignment = Enum.TextXAlignment.Left,
+        Font = Enum.Font.Code, TextSize = 12, TextWrapped = false,
+    }, wrap)
+    corner(box, 4); outline(box)
+    new("UIPadding", {PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 6)}, box)
+    box.FocusLost:Connect(function()
+        if callback then callback(box.Text) end
+    end)
+    if stateKey then inputControls[stateKey] = box end
+    return box
+end
+local function toggle(parent, caption, initial, callback, stateKey)
+    local value = initial == true
+    local b = button(parent, (value and "ON  ✓   " or "OFF  ◻   ") .. caption, 30)
+    local function paint()
+        b.Text = (value and "ON  ✓   " or "OFF  ◻   ") .. caption
+        b.BackgroundColor3 = value and C.purpleDark or C.panel2
     end
+    paint()
+    b.Activated:Connect(function()
+        value = not value; paint()
+        if callback then callback(value) end
+    end)
+    local controller = {button = b, get = function() return value end, set = function(v) value = v == true; paint(); if callback then callback(value) end end}
+    if stateKey then toggleControls[stateKey] = controller end
+    return controller
+end
+local function card(parent, titleText, height)
+    local f = new("Frame", {Size = UDim2.new(1, -4, 0, height), BackgroundColor3 = C.panel}, parent)
+    corner(f, 7); outline(f)
+    local head = new("Frame", {Size = UDim2.new(1, 0, 0, 31), BackgroundColor3 = C.panel2}, f)
+    corner(head, 7)
+    local cap = label(head, "  ◈  " .. titleText, 12, true, C.text)
+    cap.Size = UDim2.new(1, -8, 1, 0)
+    local body = new("Frame", {Position = UDim2.new(0, 10, 0, 37), Size = UDim2.new(1, -20, 1, -44), BackgroundTransparency = 1}, f)
+    local list = new("UIListLayout", {Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder}, body)
+    return f, body, list
+end
+local content
+local search
+local platformButton
+local avatarInfoLabel
+local previewLabel
 
-    state.ticks += 1
+local function refreshPreview()
+    if previewLabel then
+        local lines = {}
+        table.insert(lines, "Username: " .. ((state.identityPreview and state.username ~= "") and state.username or LocalPlayer.Name))
+        table.insert(lines, "DisplayName: " .. state.displayName)
+        table.insert(lines, "User ID preview: " .. state.userId)
+        if state.levelEnabled then table.insert(lines, "Level preview: " .. state.level) end
+        if state.platformEnabled then table.insert(lines, "Platform label: " .. state.platform) end
+        if state.contractsEnabled then table.insert(lines, "Contract: " .. state.contractName .. " | Eliminations: " .. state.eliminations .. " | Playtime: " .. state.playtime) end
+        if state.resourcesEnabled then table.insert(lines, "Keys: " .. state.keys .. " | Tokens: " .. state.tokens) end
+        previewLabel.Text = table.concat(lines, "\n")
+    end
+    if avatarInfoLabel then
+        avatarInfoLabel.Text = "Username: " .. state.username .. "\nDisplayName: " .. state.displayName .. "\nUser ID preview: " .. state.userId
+    end
+end
 
-    if state.ticks % 4096 ~= 0 then
+local function page(name)
+    local p = new("ScrollingFrame", {
+        Name = name, Visible = false, BackgroundTransparency = 1, BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 1, 0), CanvasSize = UDim2.new(0, 0, 0, 0),
+        ScrollBarThickness = 3, ScrollBarImageColor3 = C.purple,
+    }, content)
+    local l = new("UIListLayout", {Padding = UDim.new(0, 9), SortOrder = Enum.SortOrder.LayoutOrder}, p)
+    new("UIPadding", {PaddingTop = UDim.new(0, 8), PaddingLeft = UDim.new(0, 9), PaddingRight = UDim.new(0, 8), PaddingBottom = UDim.new(0, 10)}, p)
+    l:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        p.CanvasSize = UDim2.new(0, 0, 0, l.AbsoluteContentSize.Y + 20)
+    end)
+    return p
+end
+
+-- HUD with live FPS and best-effort ping.
+local hud = new("TextLabel", {
+    Name = "YabujinHUD", Position = UDim2.new(0, 8, 0, 8), Size = UDim2.new(0, 300, 0, 28),
+    BackgroundColor3 = Color3.fromRGB(5, 5, 8), BackgroundTransparency = 0.12,
+    Text = "  Yabujin | " .. LocalPlayer.Name .. " | -- fps | -- ms",
+    TextColor3 = C.text, Font = Enum.Font.GothamBold, TextSize = 11,
+    TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false,
+}, gui)
+corner(hud, 6); outline(hud, C.border)
+local frameCount, lastFrame, fpsNow = 0, os.clock(), 0
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local now = os.clock()
+    if now - lastFrame >= 1 then
+        fpsNow = frameCount / (now - lastFrame)
+        frameCount, lastFrame = 0, now
+        local ping = "N/A"
+        protect(function()
+            ping = tostring(math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())) .. " ms"
+        end)
+        local shownName = state.identityPreview and state.username or LocalPlayer.Name
+        if shownName == "" then shownName = LocalPlayer.Name end
+        hud.Text = "  Yabujin | " .. shownName .. " | " .. tostring(math.floor(fpsNow)) .. " fps | " .. ping
+    end
+end)
+
+-- Floating menu orb stays visible when the panel is hidden.
+local orb = new("TextButton", {
+    Name = "YabujinToggle", Size = UDim2.fromOffset(44, 44), Position = UDim2.new(0, 10, 0.43, 0),
+    BackgroundColor3 = C.purple, Text = "Y", TextColor3 = C.text,
+    Font = Enum.Font.GothamBlack, TextSize = 19, AutoButtonColor = true,
+}, gui)
+corner(orb, 22); outline(orb, Color3.fromRGB(194, 169, 255), 1.4)
+
+-- Main window, sized to fit smaller screens.
+local cameraAtStart = workspace.CurrentCamera
+local viewport = cameraAtStart and cameraAtStart.ViewportSize or Vector2.new(900, 600)
+local winW = math.clamp(viewport.X - 78, 300, 720)
+local winH = math.clamp(viewport.Y - 70, 300, 510)
+local window = new("Frame", {
+    Name = "MainWindow", Position = UDim2.new(0, 62, 0, 48), Size = UDim2.fromOffset(winW, winH),
+    BackgroundColor3 = C.bg, Visible = true,
+}, gui)
+corner(window, 8); outline(window, C.border, 1.2)
+local top = new("Frame", {Size = UDim2.new(1, 0, 0, 42), BackgroundColor3 = Color3.fromRGB(10, 10, 13)}, window)
+corner(top, 8)
+local brand = label(top, "YABUJIN  /  LOCAL VISUALS", 13, true)
+brand.Position = UDim2.new(0, 12, 0, 0); brand.Size = UDim2.new(1, -65, 1, 0)
+local close = button(top, "×", 27, function() window.Visible = false end)
+close.Size = UDim2.fromOffset(30, 27); close.Position = UDim2.new(1, -38, 0, 7); close.BackgroundColor3 = C.purpleDark
+
+local sidebarW = math.clamp(math.floor(winW * 0.30), 96, 155)
+local sidebar = new("Frame", {Position = UDim2.new(0, 0, 0, 42), Size = UDim2.new(0, sidebarW, 1, -42), BackgroundColor3 = Color3.fromRGB(15, 15, 19)}, window)
+local navLayout = new("UIListLayout", {Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder}, sidebar)
+new("UIPadding", {PaddingTop = UDim.new(0, 8), PaddingLeft = UDim.new(0, 7), PaddingRight = UDim.new(0, 7)}, sidebar)
+content = new("Frame", {Position = UDim2.new(0, sidebarW, 0, 42), Size = UDim2.new(1, -sidebarW, 1, -42), BackgroundTransparency = 1}, window)
+
+local pages = {}
+local navButtons = {}
+local currentPage = "Spoofer"
+local pageNames = {"Spoofer", "Avatar", "World", "Camera", "Visuals", "Settings"}
+for _, name in ipairs(pageNames) do
+    pages[name] = page(name)
+    local b = button(sidebar, name, 32)
+    b.BackgroundTransparency = 0.08
+    b.Activated:Connect(function()
+        currentPage = name
+        for pageName, p in pairs(pages) do p.Visible = pageName == name end
+        for buttonName, nav in pairs(navButtons) do nav.BackgroundColor3 = buttonName == name and C.purpleDark or C.panel2 end
+        if search then search.Text = "" end
+    end)
+    navButtons[name] = b
+end
+
+-- Search box sits between title and pages; hides nonmatching page buttons.
+search = new("TextBox", {
+    Position = UDim2.new(0, 10, 0, 48), Size = UDim2.new(1, -20, 0, 28),
+    BackgroundColor3 = C.panel2, TextColor3 = C.text, PlaceholderColor3 = C.muted,
+    PlaceholderText = "Search sections...", Text = "", ClearTextOnFocus = false,
+    Font = Enum.Font.Code, TextSize = 11,
+}, content)
+corner(search, 5); outline(search)
+for _, p in pairs(pages) do p.Position = UDim2.new(0, 0, 0, 82); p.Size = UDim2.new(1, 0, 1, -82) end
+
+-- Spoofer page. These fields update this UI's local preview, not official Rivals data.
+do
+    local p = pages.Spoofer
+    local _, body = card(p, "Identity Preview", 255)
+    input(body, "Username shown in custom HUD", state.username, "Username", function(v)
+        state.username = v
+        refreshPreview()
+        hud.Text = "  Yabujin | " .. (v ~= "" and v or LocalPlayer.Name) .. " | " .. tostring(math.floor(fpsNow)) .. " fps | -- ms"
+    end, "username")
+    input(body, "DisplayName preview", state.displayName, "Display name", function(v) state.displayName = v; refreshPreview() end, "displayName")
+    input(body, "User ID preview", state.userId, "Numeric user ID", function(v) state.userId = v; refreshPreview() end, "userId")
+    toggle(body, "Use custom username in HUD", false, function(v)
+        state.identityPreview = v
+        refreshPreview()
+        local shownName = v and state.username or LocalPlayer.Name
+        hud.Text = "  Yabujin | " .. (shownName ~= "" and shownName or LocalPlayer.Name) .. " | " .. tostring(math.floor(fpsNow)) .. " fps | -- ms"
+    end, "identityPreview")
+
+    local _, lvl = card(p, "Level Spoofer / Preview", 140)
+    input(lvl, "Local preview level", state.level, "e.g. 250", function(v) state.level = v; refreshPreview() end, "level")
+    toggle(lvl, "Show custom level in preview", false, function(v) state.levelEnabled = v; refreshPreview() end, "levelEnabled")
+
+    local _, platBody = card(p, "Platform Label", 115)
+    platformButton = button(platBody, "Platform label: PC  ▾", 30, function()
+        local options = {"PC", "Mobile", "Console"}
+        local idx = table.find(options, state.platform) or 1
+        state.platform = options[idx % #options + 1]
+        platformButton.Text = "Platform label: " .. state.platform .. "  ▾"
+        refreshPreview()
+    end)
+    toggle(platBody, "Show platform in local preview", false, function(v) state.platformEnabled = v; refreshPreview() end, "platformEnabled")
+
+    local _, contractBody = card(p, "Contract Preview", 250)
+    input(contractBody, "Contract / weapon label", state.contractName, "Contract name", function(v) state.contractName = v; refreshPreview() end, "contractName")
+    input(contractBody, "Eliminations preview", state.eliminations, "0", function(v) state.eliminations = v; refreshPreview() end, "eliminations")
+    input(contractBody, "Playtime preview", state.playtime, "Seconds", function(v) state.playtime = v; refreshPreview() end, "playtime")
+    toggle(contractBody, "Enable contract preview label", false, function(v) state.contractsEnabled = v; refreshPreview() end, "contractsEnabled")
+
+    local _, resourceBody = card(p, "Resource Preview", 190)
+    input(resourceBody, "Keys (display only)", state.keys, "0", function(v) state.keys = v; refreshPreview() end, "keys")
+    input(resourceBody, "Tokens (display only)", state.tokens, "0", function(v) state.tokens = v; refreshPreview() end, "tokens")
+    toggle(resourceBody, "Enable resource preview label", false, function(v) state.resourcesEnabled = v; refreshPreview() end, "resourcesEnabled")
+    local _, noteBody = card(p, "Live Local Preview", 175)
+    previewLabel = label(noteBody, "", 11, false, C.text)
+    previewLabel.Size = UDim2.new(1, 0, 1, 0)
+    refreshPreview()
+end
+
+-- Avatar preview: thumbnail only; does not replace the player's real character.
+do
+    local p = pages.Avatar
+    local _, body = card(p, "Avatar Thumbnail Preview", 265)
+    local avatarImg = new("ImageLabel", {Size = UDim2.fromOffset(110, 110), BackgroundColor3 = C.panel2, Image = "", ScaleType = Enum.ScaleType.Fit}, body)
+    corner(avatarImg, 7); outline(avatarImg)
+    local previewText = label(body, "Thumbnail preview only", 11, false, C.muted)
+    previewText.Size = UDim2.new(1, 0, 0, 24)
+    input(body, "Roblox User ID", state.avatarId, "Enter numeric UserId", function(v) state.avatarId = v end, "avatarId")
+    button(body, "Load avatar thumbnail", 30, function()
+        local id = tonumber(state.avatarId)
+        if not id or id < 1 then previewText.Text = "Enter a valid numeric User ID."; return end
+        avatarImg.Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(math.floor(id)) .. "&w=420&h=420"
+        previewText.Text = "Showing avatar thumbnail for ID " .. tostring(math.floor(id))
+        state.avatarPreview = true
+    end)
+    local _, info = card(p, "Local Identity Preview", 125)
+    avatarInfoLabel = label(info, "", 11, false, C.text)
+    avatarInfoLabel.Size = UDim2.new(1, 0, 1, 0)
+    refreshPreview()
+    local _, tip = card(p, "Important", 75)
+    local t = label(tip, "The avatar and identity above are preview-only. This does not change your real account or what other players see.", 11, false, C.muted)
+    t.Size = UDim2.new(1, 0, 1, 0)
+end
+
+-- World themes are local Lighting tints (not downloadable skybox texture packs).
+local lightingOriginal = {
+    Ambient = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    FogColor = Lighting.FogColor,
+    FogEnd = Lighting.FogEnd,
+    ClockTime = Lighting.ClockTime,
+    Brightness = Lighting.Brightness,
+}
+local oldCC = Lighting:FindFirstChild("YabujinLocalColorGrade")
+if oldCC then protect(function() oldCC:Destroy() end) end
+local colorGrade = new("ColorCorrectionEffect", {Name = "YabujinLocalColorGrade", Enabled = false, Saturation = 0.05, Contrast = 0.05, Brightness = 0}, Lighting)
+local themes = {
+    ["Default"] = nil,
+    ["Galaxy Purple"] = {ambient = Color3.fromRGB(74, 52, 120), outdoor = Color3.fromRGB(47, 32, 86), fog = Color3.fromRGB(42, 25, 79), saturation = 0.18, contrast = 0.12, brightness = -0.02},
+    ["Cosmic Blue"] = {ambient = Color3.fromRGB(47, 79, 135), outdoor = Color3.fromRGB(28, 49, 100), fog = Color3.fromRGB(17, 36, 87), saturation = 0.12, contrast = 0.10, brightness = 0},
+    ["Crimson Void"] = {ambient = Color3.fromRGB(116, 44, 58), outdoor = Color3.fromRGB(72, 22, 34), fog = Color3.fromRGB(68, 12, 27), saturation = 0.16, contrast = 0.18, brightness = -0.03},
+    ["Emerald Aurora"] = {ambient = Color3.fromRGB(46, 114, 91), outdoor = Color3.fromRGB(24, 76, 63), fog = Color3.fromRGB(12, 64, 54), saturation = 0.16, contrast = 0.10, brightness = 0.01},
+    ["Pink Nebula"] = {ambient = Color3.fromRGB(131, 70, 131), outdoor = Color3.fromRGB(82, 39, 100), fog = Color3.fromRGB(79, 31, 87), saturation = 0.20, contrast = 0.12, brightness = 0.01},
+}
+local function applyTheme(name)
+    state.theme = name
+    local theme = themes[name]
+    if not theme then
+        Lighting.Ambient = lightingOriginal.Ambient
+        Lighting.OutdoorAmbient = lightingOriginal.OutdoorAmbient
+        Lighting.FogColor = lightingOriginal.FogColor
+        Lighting.FogEnd = lightingOriginal.FogEnd
+        Lighting.ClockTime = lightingOriginal.ClockTime
+        Lighting.Brightness = lightingOriginal.Brightness
+        colorGrade.Enabled = false
         return
     end
-
-    local now = os.clock()
-
-    if state.frame ~= schedulerFrame then
-        state.started = now
-        state.ticks = 0
-        state.frame = schedulerFrame
-    end
-    if state.ticks > 50000000 or now - state.started > 20 then
-        control.error = 'Execution made no progress: loop ' .. tostring(id)
-        control.status = 'error'
-        control.stopped = true
-
-        if heartbeatConnection then
-            heartbeatConnection:Disconnect()
-        end
-
-        error(control.error, 0)
-    end
-    if state.ticks > 0 and state.ticks % 262144 == 0 and coroutine.isyieldable() then
-        task.wait()
-
-        state.frame = schedulerFrame
-    end
+    Lighting.Ambient = theme.ambient
+    Lighting.OutdoorAmbient = theme.outdoor
+    Lighting.FogColor = theme.fog
+    Lighting.FogEnd = 100000
+    colorGrade.TintColor = theme.ambient:Lerp(Color3.new(1, 1, 1), 0.45)
+    colorGrade.Saturation = theme.saturation
+    colorGrade.Contrast = theme.contrast
+    colorGrade.Brightness = theme.brightness
+    colorGrade.Enabled = true
 end
-
-local Native = {}
-local Backend = {}
-
-local function buildApplication()
-    local runtime = Backend.createRuntime()
-    local state = Backend.bindPrimitives(runtime)
-    local data = Backend.loadProgramData()
-
-    Backend.initialize(data)
-
-    return state[56](data[1], state[2])
-end
-local function runApplication()
-    local function traceback(err)
-        local text = tostring(err)
-
-        return debug and debug.traceback and debug.traceback(text, 2) or text
-    end
-
-    local ok, result = xpcall(function()
-        assert(type(getgenv) == 'function', 'This file needs a Roblox executor with getgenv.')
-        assert(game ~= nil and type(loadstring) == 'function', 'Roblox and loadstring are required.')
-        assert(type(buffer) == 'table' and type(bit32) == 'table', 'buffer and bit32 are required.')
-
-        heartbeatConnection = game:GetService('RunService').Heartbeat:Connect(function()
-            schedulerFrame += 1
-        end)
-
-        local entry = buildApplication()
-
-        return table.pack(entry(table.unpack(arguments, 1, arguments.n)))
-    end, traceback)
-
-    if not ok then
-        control.error = result
-        control.status = 'error'
-        control.stopped = true
-
-        if heartbeatConnection then
-            heartbeatConnection:Disconnect()
-        end
-
-        local failedLibrary = rawget(sharedEnv, 'Library')
-
-        if type(failedLibrary) == 'table' and failedLibrary ~= previousLibrary then
-            if type(failedLibrary.Signals) == 'table' then
-                for _, signal in failedLibrary.Signals do
-                    if typeof(signal) == 'RBXScriptConnection' then
-                        signal:Disconnect()
-                    end
-                end
-            end
-            if typeof(failedLibrary.ScreenGui) == 'Instance' then
-                failedLibrary.ScreenGui:Destroy()
-            end
-        end
-
-        sharedEnv.Library = previousLibrary
-        sharedEnv.Options = previousOptions
-        sharedEnv.Toggles = previousToggles
-        sharedEnv.UE_LOADED = previousLoaded
-
-        return control
-    end
-
-    control.status = 'entry_returned'
-    control.elapsed = os.clock() - control.started
-
-    local applicationLibrary = rawget(sharedEnv, 'Library')
-
-    if type(applicationLibrary) == 'table' and applicationLibrary ~= previousLibrary and typeof(applicationLibrary.ScreenGui) == 'Instance' then
-        applicationLibrary.ScreenGui.Destroying:Connect(function()
-            control.status = 'unloaded'
-            control.stopped = true
-
-            if heartbeatConnection then
-                heartbeatConnection:Disconnect()
-            end
-
-            sharedEnv.UE_LOADED = previousLoaded
-
-            if rawget(sharedEnv, 'Library') == applicationLibrary then
-                sharedEnv.Library = previousLibrary
-                sharedEnv.Options = previousOptions
-                sharedEnv.Toggles = previousToggles
-            end
+do
+    local p = pages.World
+    local _, body = card(p, "Local Color Themes", 305)
+    local themeStatus = label(body, "Current theme: Default", 11, false, C.muted)
+    themeStatus.Size = UDim2.new(1, 0, 0, 22)
+    local choices = {"Galaxy Purple", "Cosmic Blue", "Crimson Void", "Emerald Aurora", "Pink Nebula"}
+    for _, themeName in ipairs(choices) do
+        button(body, themeName, 29, function()
+            applyTheme(themeName)
+            themeStatus.Text = "Current theme: " .. themeName .. " (local lighting)"
         end)
     end
-
-    return control
+    button(body, "Restore Default", 29, function()
+        applyTheme("Default")
+        themeStatus.Text = "Current theme: Default"
+    end)
+    local _, note = card(p, "Theme Info", 70)
+    local n = label(note, "These apply local ambient/fog/color grading. They do not load a custom skybox texture or affect other players.", 11, false, C.muted)
+    n.Size = UDim2.new(1, 0, 1, 0)
 end
 
-function Backend.initialize(data)
-    local root = data[1]
-    local opcodes, destinations, jumpOperands, constantValues, globalNames, memberKeys, sourceRegisters = root[3], root[4], root[5], root[7], root[8], root[9], root[10]
-
-    assert(opcodes[1] == 7 and jumpOperands[1] == 17364, 'Unexpected input version')
-    assert(opcodes[17366] == 213 and opcodes[17880] == 42, 'Application boundary changed')
-
-    -- Keep this standalone file from scheduling the old key-protected loader.
-    assert(opcodes[20172] == 213 and jumpOperands[20172] == 24
-        and globalNames[20172] == 'queue_on_teleport', 'Teleport boundary changed')
-    opcodes[20172] = 167
-    destinations[20172] = 24
-    rawset(constantValues, 20172, function() end)
-
-    opcodes[17366] = 7
-    jumpOperands[17366] = 20413
-    opcodes[20414] = 213
-    jumpOperands[20414] = 2
-
-    rawset(globalNames, 20414, 'os')
-
-    opcodes[20415] = 116
-    destinations[20415] = 2
-    sourceRegisters[20415] = 2
-
-    rawset(memberKeys, 20415, 'clock')
-
-    opcodes[20416] = 171
-    sourceRegisters[20416] = 2
-    opcodes[20417] = 7
-    jumpOperands[20417] = 2752
-    opcodes[20418] = 167
-    destinations[20418] = 12
-
-    rawset(constantValues, 20418, 9395)
-
-    local function integrityProduct(inputValue)
-        return (inputValue + 63) % 100 * (inputValue % 32)
-    end
-    local function integrityModulo(inputValue)
-        return 327 * inputValue % 10000
-    end
-    local function integrityOffset(inputValue)
-        return 3650 * inputValue % 7115 + 3 * inputValue
-    end
-
-    opcodes[20419] = 167
-    destinations[20419] = 5
-
-    rawset(constantValues, 20419, integrityProduct)
-
-    opcodes[20420] = 167
-    destinations[20420] = 4
-
-    rawset(constantValues, 20420, integrityModulo)
-
-    opcodes[20421] = 167
-    destinations[20421] = 3
-
-    rawset(constantValues, 20421, integrityOffset)
-
-    opcodes[20422] = 167
-    destinations[20422] = 11
-
-    rawset(constantValues, 20422, 964)
-
-    opcodes[20423] = 167
-    destinations[20423] = 6
-
-    rawset(constantValues, 20423, 'Frame')
-
-    opcodes[20424] = 167
-    destinations[20424] = 7
-
-    rawset(constantValues, 20424, 'OutlineColor')
-
-    opcodes[20425] = 167
-    destinations[20425] = 8
-
-    rawset(constantValues, 20425, 'BindableEvent')
-
-    opcodes[20426] = 167
-    destinations[20426] = 9
-
-    rawset(constantValues, 20426, false)
-
-    opcodes[20427] = 167
-    destinations[20427] = 10
-
-    rawset(constantValues, 20427, true)
-
-    opcodes[20428] = 7
-    jumpOperands[20428] = 1128
-    opcodes[17880] = 7
-    jumpOperands[17880] = 20417
+-- Camera field of view works locally; Roblox client scripts cannot force actual monitor resolution.
+local originalFov = workspace.CurrentCamera and workspace.CurrentCamera.FieldOfView or 70
+local function setFov(value)
+    state.fov = math.clamp(tonumber(value) or 70, 50, 110)
+    local cam = workspace.CurrentCamera
+    if cam then cam.FieldOfView = state.fov end
 end
-function Native.library(captures)
-    local capture09 = captures[9]
-    local capture11 = captures[11]
-    local uiLibrary = captures[0]
-    local capture10 = captures[10]
-    local capture17 = captures[17]
-    local playersService = captures[22]
-    local capture12 = captures[12]
-    local capture19 = captures[19]
-    local textService = captures[18]
-    local userInputService = captures[6]
-    local capture08 = captures[8]
-    local capture14 = captures[14]
-    local capture02 = captures[2]
-    local teamsService = captures[21]
-    local contextActionService = captures[13]
-    local capture01 = captures[1]
-    local capture05 = captures[5]
-    local capture03 = captures[3]
-    local capture16 = captures[16]
-    local capture20 = captures[20]
-    local capture04 = captures[4]
-    local capture07 = captures[7]
-    local capture23 = captures[23]
-    local capture15 = captures[15]
+do
+    local p = pages.Camera
+    local _, body = card(p, "Camera FOV", 170)
+    local fovText = label(body, "FOV: " .. tostring(state.fov), 12, true)
+    fovText.Size = UDim2.new(1, 0, 0, 25)
+    button(body, "− 5 FOV", 30, function() setFov(state.fov - 5); fovText.Text = "FOV: " .. tostring(state.fov) end)
+    button(body, "+ 5 FOV", 30, function() setFov(state.fov + 5); fovText.Text = "FOV: " .. tostring(state.fov) end)
+    button(body, "Reset FOV", 30, function() setFov(originalFov); fovText.Text = "FOV: " .. tostring(state.fov) end)
+    local _, info = card(p, "Resolution / Stretch", 90)
+    local n = label(info, "This changes camera FOV only. True stretched resolution requires display/graphics settings and cannot be forced reliably by this local UI.", 11, false, C.muted)
+    n.Size = UDim2.new(1, 0, 1, 0)
+end
 
-    return function()
-        capture08[3][capture08[2] ] = function()
-            local players = playersService:GetPlayers()
-
-            for index = 1, #players do
-                __step(5)
-
-                players[index] = players[index].Name
-            end
-
-            table.sort(players, function(value028, value029)
-                return value028 < value029
-            end)
-
-            return players
-        end
-        capture11[3][capture11[2] ] = function()
-            local teams = teamsService:GetTeams()
-
-            for index2 = 1, #teams do
-                __step(6)
-
-                teams[index2] = teams[index2].Name
-            end
-
-            table.sort(teams, function(value032, value033)
-                return value032 < value033
-            end)
-
-            return teams
-        end
-
-        function uiLibrary:SafeCallback(callback, ...)
-            if not callback then
-                return
-            end
-            if not uiLibrary.NotifyOnError then
-                return callback(...)
-            end
-
-            local success, resultOrError = pcall(callback, ...)
-
-            if not success then
-                local matchStart, matchEnd = resultOrError:find(':%d+: ')
-
-                if not matchEnd then
-                    return uiLibrary:Notify(resultOrError)
-                end
-
-                return uiLibrary:Notify(resultOrError:sub(matchEnd + 1), 3)
+-- No Hands is best-effort: hides locally rendered arm/hand-named BaseParts under CurrentCamera.
+local hiddenParts = {}
+local cameraDescConn, cameraChildConn
+local function restoreHands()
+    for part, oldValue in pairs(hiddenParts) do
+        if part and part.Parent then protect(function() part.LocalTransparencyModifier = oldValue end) end
+    end
+    table.clear(hiddenParts)
+end
+local function scanHands()
+    if not state.noHands then return end
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    for _, obj in ipairs(cam:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            local name = string.lower(obj.Name)
+            if string.find(name, "hand", 1, true) or string.find(name, "arm", 1, true) then
+                if hiddenParts[obj] == nil then hiddenParts[obj] = obj.LocalTransparencyModifier end
+                obj.LocalTransparencyModifier = 1
             end
         end
-        function uiLibrary:AttemptSave()
-            if uiLibrary.SaveManager then
-                uiLibrary.SaveManager:Save()
+    end
+end
+local function setNoHands(on)
+    state.noHands = on == true
+    if state.noHands then
+        scanHands()
+        if cameraDescConn then cameraDescConn:Disconnect() end
+        local cam = workspace.CurrentCamera
+        if cam then cameraDescConn = cam.DescendantAdded:Connect(function() task.defer(scanHands) end) end
+    else
+        if cameraDescConn then cameraDescConn:Disconnect(); cameraDescConn = nil end
+        restoreHands()
+    end
+end
+do
+    local p = pages.Visuals
+    local _, body = card(p, "Local Visuals", 125)
+    toggle(body, "No Hands (best effort)", false, function(v) setNoHands(v) end, "noHands")
+    local _, info = card(p, "Limitations", 90)
+    local n = label(info, "Some Rivals viewmodels may use different part names or be recreated by the game, so No Hands may not apply to every weapon.", 11, false, C.muted)
+    n.Size = UDim2.new(1, 0, 1, 0)
+end
+
+-- Session-only configs: intentionally no executor file APIs or external writes.
+do
+    local p = pages.Settings
+    local _, body = card(p, "Profile Manager", 230)
+    local configNameBox = input(body, "Profile name", "Default", "Name this profile", function(v) end)
+    local selectedLabel = label(body, "Selected profile: none", 11, false, C.muted)
+    selectedLabel.Size = UDim2.new(1, 0, 0, 24)
+    local configs, selected = {}, nil
+    button(body, "Save current settings", 30, function()
+        local name = configNameBox.Text
+        if name == "" then name = "Default" end
+        local copy = {}
+        for k, v in pairs(state) do copy[k] = v end
+        configs[name] = copy
+        selected = name
+        selectedLabel.Text = "Saved and selected: " .. name .. " (this session)"
+    end)
+    button(body, "Select next saved profile", 30, function()
+        local names = {}
+        for name in pairs(configs) do table.insert(names, name) end
+        table.sort(names)
+        if #names == 0 then selectedLabel.Text = "No profiles saved yet."; return end
+        local idx = table.find(names, selected) or 0
+        selected = names[idx % #names + 1]
+        configNameBox.Text = selected
+        selectedLabel.Text = "Selected profile: " .. selected
+    end)
+    button(body, "Load selected profile", 30, function()
+        if not selected or not configs[selected] then selectedLabel.Text = "Select a saved profile first."; return end
+        for k, v in pairs(configs[selected]) do state[k] = v end
+        for key, box in pairs(inputControls) do if box and state[key] ~= nil then box.Text = tostring(state[key]) end end
+        for key, control in pairs(toggleControls) do if control and state[key] ~= nil then control.set(state[key]) end end
+        if state.identityPreview then
+            hud.Text = "  Yabujin | " .. (state.username ~= "" and state.username or LocalPlayer.Name) .. " | " .. tostring(math.floor(fpsNow)) .. " fps | -- ms"
+        else
+            hud.Text = "  Yabujin | " .. LocalPlayer.Name .. " | " .. tostring(math.floor(fpsNow)) .. " fps | -- ms"
+        end
+        setFov(state.fov)
+        applyTheme(state.theme)
+        setNoHands(state.noHands)
+        refreshPreview()
+        platformButton.Text = "Platform label: " .. state.platform .. "  ▾"
+        refreshPreview()
+        selectedLabel.Text = "Loaded: " .. selected .. " (this session)"
+    end)
+    local _, info = card(p, "Compatibility", 100)
+    local n = label(info, "If Real Executor blocks gethui/CoreGui or certain client APIs, the UI may fail on that version. This script uses ordinary local UI/Lighting/Camera APIs and makes no anti-cheat bypass attempts.", 11, false, C.muted)
+    n.Size = UDim2.new(1, 0, 1, 0)
+end
+
+-- Search section names; typing narrows the sidebar. Page content is left intact.
+search:GetPropertyChangedSignal("Text"):Connect(function()
+    local q = string.lower(search.Text)
+    local anyMatch = false
+    for name, nav in pairs(navButtons) do
+        local match = q == "" or string.find(string.lower(name), q, 1, true) ~= nil
+        nav.Visible = match
+        if match then anyMatch = true end
+    end
+    if q ~= "" and anyMatch then
+        for name, nav in pairs(navButtons) do
+            if nav.Visible then
+                currentPage = name
+                for pageName, p in pairs(pages) do p.Visible = pageName == name end
+                for buttonName, b in pairs(navButtons) do b.BackgroundColor3 = buttonName == name and C.purpleDark or C.panel2 end
+                break
             end
         end
-        function uiLibrary:Create(classOrInstance, properties)
-            local instance3 = classOrInstance
-
-            if typeof(classOrInstance) == 'string' then
-                instance3 = Instance.new(classOrInstance)
-            end
-
-            for key, value in next, properties do
-                __step(7)
-
-                local success2, resultOrError2 = pcall(function()
-                    instance3[key] = value
-                end)
-
-                if not success2 then
-                    capture17(resultOrError2)
-                end
-            end
-
-            return instance3
-        end
-        function uiLibrary:EnableFlagCopying(enabled)
-            uiLibrary.FlagCopying = enabled
-        end
-        function uiLibrary:ApplyTextStroke(label)
-            label.TextStrokeTransparency = 1
-
-            return uiLibrary:Create('UIStroke', {
-                Color = Color3.new(0, 0, 0),
-                Thickness = 1,
-                LineJoinMode = Enum.LineJoinMode.Miter,
-                Parent = label,
-            })
-        end
-        function uiLibrary:CreateLabel(properties2, isHud)
-            local textLabel = uiLibrary:Create('TextLabel', {
-                BackgroundTransparency = 1,
-                Font = uiLibrary.Font,
-                TextColor3 = uiLibrary.FontColor,
-                TextSize = 16,
-                TextStrokeTransparency = 0,
-            })
-
-            uiLibrary:ApplyTextStroke(textLabel)
-            uiLibrary:AddToRegistry(textLabel, {
-                TextColor3 = 'FontColor',
-            }, isHud)
-
-            return uiLibrary:Create(textLabel, properties2)
-        end
-        function uiLibrary:MakeDraggable(frame, dragHeight, respectDragLock)
-            frame.Active = true
-
-            frame.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                    if respectDragLock == true and uiLibrary.CantDragForced == true then
-                        return
-                    end
-
-                    local dragOffset = Vector2.new(capture03.X - frame.AbsolutePosition.X, capture03.Y - frame.AbsolutePosition.Y)
-
-                    if dragOffset.Y > (dragHeight or 40) then
-                        return
-                    end
-
-                    while userInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-                        __step(8)
-
-                        frame.Position = UDim2.new(0, capture03.X - dragOffset.X + frame.Size.X.Offset * frame.AnchorPoint.X, 0, capture03.Y - dragOffset.Y + frame.Size.Y.Offset * frame.AnchorPoint.Y)
-
-                        capture04:Wait()
-                    end
-                end
-            end)
-        end
-
-        local screenGui = Instance.new('ScreenGui', capture10)
-
-        function uiLibrary:MakeDraggableOutline(frame2, dragHeight2, respectDragLock2)
-            frame2.Active = true
-
-            frame2.InputBegan:Connect(function(input2)
-                if input2.UserInputType == Enum.UserInputType.MouseButton1 then
-                    if respectDragLock2 == true and uiLibrary.CantDragForced == true then
-                        return
-                    end
-
-                    local dragOffset2 = Vector2.new(capture03.X - frame2.AbsolutePosition.X, capture03.Y - frame2.AbsolutePosition.Y)
-
-                    if dragOffset2.Y > (dragHeight2 or 40) then
-                        return
-                    end
-
-                    local value070 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                        Parent = screenGui,
-                        AnchorPoint = frame2.AnchorPoint,
-                        BackgroundTransparency = 1,
-                        Size = frame2.Size,
-                        Position = frame2.Position,
-                    })
-                    local uIStroke = uiLibrary:Create('UIStroke', {
-                        Parent = value070,
-                        Color = uiLibrary.AccentColor or Color3.new(0, 0, 0),
-                    })
-
-                    uiLibrary.IsDragging = true
-
-                    while(userInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)) do
-                        __step(9)
-
-                        value070.Position = UDim2.new(0, capture03.X - dragOffset2.X + frame2.Size.X.Offset * frame2.AnchorPoint.X, 0, capture03.Y - dragOffset2.Y + frame2.Size.Y.Offset * frame2.AnchorPoint.Y)
-                        uIStroke.Color = uiLibrary.AccentColor or Color3.new(0, 0, 0)
-
-                        capture04:Wait()
-                    end
-
-                    frame2.Position = value070.Position
-
-                    value070:Destroy()
-
-                    uiLibrary.IsDragging = false
-                end
-                if input2.UserInputType == Enum.UserInputType.Touch then
-                    if respectDragLock2 == true and uiLibrary.CantDragForced == true then
-                        return
-                    end
-
-                    local value072 = Vector2.new(input2.Position.X - frame2.AbsolutePosition.X, input2.Position.Y - frame2.AbsolutePosition.Y)
-
-                    if value072.Y > (dragHeight2 or 40) then
-                        return
-                    end
-
-                    local value073 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                        Parent = screenGui,
-                        AnchorPoint = frame2.AnchorPoint,
-                        BackgroundTransparency = 1,
-                        Size = frame2.Size,
-                        Position = frame2.Position,
-                    })
-                    local uIStroke2 = uiLibrary:Create('UIStroke', {
-                        Parent = value073,
-                        Color = uiLibrary.AccentColor or Color3.new(0, 0, 0),
-                    })
-
-                    uiLibrary.IsDragging = true
-
-                    local value075 = true
-                    local value076
-
-                    value076 = input2.Changed:Connect(function()
-                        if input2.UserInputState == Enum.UserInputState.End then
-                            value075 = false
-                        end
-                    end)
-
-                    while value075 do
-                        __step(10)
-
-                        value073.Position = UDim2.new(0, input2.Position.X - value072.X + frame2.Size.X.Offset * frame2.AnchorPoint.X, 0, input2.Position.Y - value072.Y + frame2.Size.Y.Offset * frame2.AnchorPoint.Y)
-                        uIStroke2.Color = uiLibrary.AccentColor or Color3.new(0, 0, 0)
-
-                        capture04:Wait()
-                    end
-
-                    frame2.Position = value073.Position
-
-                    if value076 then
-                        value076:Disconnect()
-                    end
-
-                    value073:Destroy()
-
-                    uiLibrary.IsDragging = false
-                end
-            end)
-        end
-        function uiLibrary:MakeDraggableUsingParent(handle, frame3, dragHeight3, respectDragLock3)
-            handle.Active = true
-
-            if uiLibrary.IsMobile == false then
-                handle.InputBegan:Connect(function(input3)
-                    if input3.UserInputType == Enum.UserInputType.MouseButton1 or input3.UserInputType == Enum.UserInputType.Touch then
-                        if respectDragLock3 == true and uiLibrary.CantDragForced == true then
-                            return
-                        end
-
-                        local dragOffset3 = Vector2.new(capture03.X - frame3.AbsolutePosition.X, capture03.Y - frame3.AbsolutePosition.Y)
-
-                        if dragOffset3.Y > (dragHeight3 or 40) then
-                            return
-                        end
-
-                        while userInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-                            __step(11)
-
-                            frame3.Position = UDim2.new(0, capture03.X - dragOffset3.X + frame3.Size.X.Offset * frame3.AnchorPoint.X, 0, capture03.Y - dragOffset3.Y + frame3.Size.Y.Offset * frame3.AnchorPoint.Y)
-
-                            capture04:Wait()
-                        end
-                    end
-                end)
-            else
-                uiLibrary:MakeDraggable(frame3, dragHeight3, respectDragLock3)
-            end
-        end
-        function uiLibrary:MakeResizable(value085, value086)
-            value085.Active = true
-
-            local value087 = 25
-            local value088 = 0.5
-            local value089 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                SizeConstraint = Enum.SizeConstraint.RelativeXX,
-                BackgroundColor3 = Color3.new(0, 0, 0),
-                BackgroundTransparency = 1,
-                BorderSizePixel = 0,
-                Size = UDim2.new(0, 30, 0, 30),
-                Position = UDim2.new(1, -30, 1, -30),
-                Visible = true,
-                ClipsDescendants = true,
-                ZIndex = 1,
-                Parent = value085,
-            })
-            local imageButton = uiLibrary:Create('ImageButton', {
-                BackgroundColor3 = uiLibrary.AccentColor,
-                BackgroundTransparency = 1,
-                BorderSizePixel = 0,
-                Size = UDim2.new(2, 0, 2, 0),
-                Position = UDim2.new(1, -30, 1, -30),
-                ZIndex = 2,
-                Parent = value089,
-            })
-            local uICorner = uiLibrary:Create('UICorner', {
-                CornerRadius = UDim.new(0.5, 0),
-                Parent = imageButton,
-            })
-
-            uiLibrary:AddToRegistry(imageButton, {
-                BackgroundColor3 = 'AccentColor',
-            })
-
-            value089.Size = UDim2.fromOffset(value087, value087)
-            value089.Position = UDim2.new(1, -value087, 1, -value087)
-            value086 = value086 or uiLibrary.MinSize
-
-            local value092
-            local value093, uIStroke3 = nil, uiLibrary:Create('UIStroke', {
-                Color = uiLibrary.AccentColor or Color3.new(0, 0, 0),
-            })
-
-            uIStroke3.Color = uiLibrary.AccentColor or Color3.new(0, 0, 0)
-
-            local function value095(value096)
-                imageButton.Position = UDim2.new()
-                imageButton.Size = UDim2.new(2, 0, 2, 0)
-                imageButton.Parent = value089
-                imageButton.BackgroundTransparency = value096
-                uICorner.Parent = imageButton
-                value092 = nil
-
-                if value093 then
-                    uIStroke3.Parent = nil
-                    value085.Size = value093.Size
-
-                    value093:Destroy()
-                end
-            end
-
-            if uiLibrary.IsMobile ~= true then
-                imageButton.MouseButton1Down:Connect(function()
-                    if value092 then
-                        return
-                    end
-
-                    value092 = Vector2.new(capture03.X - (value085.AbsolutePosition.X + value085.AbsoluteSize.X), capture03.Y - (value085.AbsolutePosition.Y + value085.AbsoluteSize.Y))
-                    value093 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                        Parent = screenGui,
-                        AnchorPoint = value085.AnchorPoint,
-                        BackgroundTransparency = 1,
-                        Size = value085.Size,
-                        Position = value085.Position,
-                    })
-                    uIStroke3.Parent = value093
-                    imageButton.BackgroundTransparency = 1
-                    imageButton.Size = UDim2.fromOffset(uiLibrary.ScreenGui.AbsoluteSize.X, uiLibrary.ScreenGui.AbsoluteSize.Y)
-                    imageButton.Position = UDim2.new()
-                    uICorner.Parent = nil
-                    imageButton.Parent = uiLibrary.ScreenGui
-                end)
-                imageButton.MouseMoved:Connect(function()
-                    if not value092 then
-                        return
-                    end
-
-                    local value097 = Vector2.new(capture03.X - value092.X, capture03.Y - value092.Y)
-                    local value098 = Vector2.new(math.clamp(value097.X - value085.AbsolutePosition.X, value086.X, math.huge), math.clamp(value097.Y - value085.AbsolutePosition.Y, value086.Y, math.huge))
-
-                    value093.Size = UDim2.fromOffset(value098.X, value098.Y)
-                end)
-                imageButton.MouseButton1Up:Connect(function()
-                    value095(value088)
-                end)
-            else
-                imageButton.InputBegan:Connect(function(input4)
-                    if input4.UserInputType ~= Enum.UserInputType.Touch then
-                        return
-                    end
-                    if value092 then
-                        return
-                    end
-
-                    value092 = Vector2.new(input4.Position.X - (value085.AbsolutePosition.X + value085.AbsoluteSize.X), input4.Position.Y - (value085.AbsolutePosition.Y + value085.AbsoluteSize.Y))
-                    value093 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                        Parent = screenGui,
-                        AnchorPoint = value085.AnchorPoint,
-                        BackgroundTransparency = 1,
-                        Size = value085.Size,
-                        Position = value085.Position,
-                    })
-                    uIStroke3.Parent = value093
-                end)
-                imageButton.InputChanged:Connect(function(input5)
-                    if input5.UserInputType ~= Enum.UserInputType.Touch then
-                        return
-                    end
-                    if not value092 then
-                        return
-                    end
-
-                    local value101 = Vector2.new(input5.Position.X - value092.X, input5.Position.Y - value092.Y)
-                    local value102 = Vector2.new(math.clamp(value101.X - value085.AbsolutePosition.X, value086.X, math.huge), math.clamp(value101.Y - value085.AbsolutePosition.Y, value086.Y, math.huge))
-
-                    value093.Size = UDim2.fromOffset(value102.X, value102.Y)
-                end)
-                imageButton.InputEnded:Connect(function(input6)
-                    if input6.UserInputType ~= Enum.UserInputType.Touch then
-                        return
-                    end
-
-                    value095(value088)
-                end)
-            end
-
-            value095(value088)
-        end
-        function uiLibrary:AddToolTip(text, target)
-            local textWidth, textHeight = uiLibrary:GetTextBounds(text, uiLibrary.Font, 14)
-            local value109 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                BackgroundColor3 = uiLibrary.MainColor,
-                BorderColor3 = uiLibrary.OutlineColor,
-                Size = UDim2.fromOffset(textWidth + 5, textHeight + 4),
-                ZIndex = 100,
-                Parent = uiLibrary.ScreenGui,
-                Visible = false,
-            })
-            local value110 = uiLibrary:CreateLabel({
-                Position = UDim2.fromOffset(3, 1),
-                Size = UDim2.fromOffset(textWidth, textHeight),
-                TextSize = 14,
-                Text = text,
-                TextColor3 = uiLibrary.FontColor,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                ZIndex = value109.ZIndex + 1,
-                Parent = value109,
-            })
-
-            uiLibrary:AddToRegistry(value109, {
-                BackgroundColor3 = 'MainColor',
-                BorderColor3 = capture15[3][capture15[2] ],
-            })
-            uiLibrary:AddToRegistry(value110, {
-                TextColor3 = 'FontColor',
-            })
-
-            local value111 = false
-
-            target.MouseEnter:Connect(function()
-                if uiLibrary:MouseIsOverOpenedFrame() then
-                    return
-                end
-
-                value111 = true
-                value109.Position = UDim2.fromOffset(capture03.X + 15, capture03.Y + 12)
-                value109.Visible = true
-
-                while value111 do
-                    __step(12)
-                    capture19.Heartbeat:Wait()
-
-                    value109.Position = UDim2.fromOffset(capture03.X + 15, capture03.Y + 12)
-                end
-            end)
-            target.MouseLeave:Connect(function()
-                value111 = false
-                value109.Visible = false
-            end)
-
-            if capture12[3][capture12[2] ] then
-                capture12[3][capture12[2] ]:GetPropertyChangedSignal('Visible'):Connect(function()
-                    if capture12[3][capture12[2] ].Visible == false then
-                        value111 = false
-                        value109.Visible = false
-                    end
-                end)
-            end
-        end
-        function uiLibrary:OnHighlight(target2, styledInstance, highlightProperties, normalProperties, canHighlight)
-            local function value118()
-                local registryEntry = uiLibrary.RegistryMap[styledInstance]
-
-                for key2, value2 in next, normalProperties do
-                    __step(13)
-
-                    styledInstance[key2] = uiLibrary[value2] or value2
-
-                    if registryEntry and registryEntry.Properties[key2] then
-                        registryEntry.Properties[key2] = value2
-                    end
-                end
-            end
-            local function value122()
-                if canHighlight and not canHighlight() then
-                    value118()
-
-                    return
-                end
-
-                local registryEntry2 = uiLibrary.RegistryMap[styledInstance]
-
-                for key3, value3 in next, highlightProperties do
-                    __step(14)
-
-                    styledInstance[key3] = uiLibrary[value3] or value3
-
-                    if registryEntry2 and registryEntry2.Properties[key3] then
-                        registryEntry2.Properties[key3] = value3
-                    end
-                end
-            end
-
-            target2.MouseEnter:Connect(function()
-                value122()
-            end)
-            target2.MouseMoved:Connect(function()
-                value122()
-            end)
-            target2.MouseLeave:Connect(function()
-                value118()
-            end)
-        end
-        function uiLibrary:MouseIsOverOpenedFrame()
-            for key4, value4 in next, uiLibrary.OpenedFrames do
-                __step(15)
-
-                local absolutePosition, absoluteSize = key4.AbsolutePosition, key4.AbsoluteSize
-
-                if capture03.X >= absolutePosition.X and capture03.X <= absolutePosition.X + absoluteSize.X and capture03.Y >= absolutePosition.Y and capture03.Y <= absolutePosition.Y + absoluteSize.Y then
-                    return true
-                end
-            end
-        end
-        function uiLibrary:IsMouseOverFrame(frame4)
-            local absolutePosition2, absoluteSize2 = frame4.AbsolutePosition, frame4.AbsoluteSize
-
-            if capture03.X >= absolutePosition2.X and capture03.X <= absolutePosition2.X + absoluteSize2.X and capture03.Y >= absolutePosition2.Y and capture03.Y <= absolutePosition2.Y + absoluteSize2.Y then
-                return true
-            end
-        end
-        function uiLibrary:UpdateDependencyBoxes()
-            for key5, value5 in next, uiLibrary.DependencyBoxes do
-                __step(16)
-                value5:Update()
-            end
-        end
-        function uiLibrary:MapValue(inputValue, inputMin, inputMax, outputMin, outputMax)
-            return (1 - (inputValue - inputMin) / (inputMax - inputMin)) * outputMin + (inputValue - inputMin) / (inputMax - inputMin) * outputMax
-        end
-        function uiLibrary:GetTextBounds(text2, font, fontSize, bounds)
-            local textSize = textService:GetTextSize(text2, fontSize, font, bounds or Vector2.new(1920, 1080))
-
-            return textSize.X, textSize.Y
-        end
-        function uiLibrary:GetDarkerColor(color)
-            local hue, saturation, brightness = Color3.toHSV(color)
-
-            return Color3.fromHSV(hue, saturation, brightness / 1.5)
-        end
-
-        uiLibrary.AccentColorDark = uiLibrary:GetDarkerColor(uiLibrary.AccentColor)
-
-        function uiLibrary:AddToRegistry(instance, properties3, isHud2)
-            local registryIndex = #uiLibrary.Registry + 1
-            local registryEntry3 = {
-                Instance = instance,
-                Properties = properties3,
-                Idx = registryIndex,
-            }
-
-            table.insert(uiLibrary.Registry, registryEntry3)
-
-            uiLibrary.RegistryMap[instance] = registryEntry3
-
-            if isHud2 then
-                table.insert(uiLibrary.HudRegistry, registryEntry3)
-            end
-        end
-        function uiLibrary:RemoveFromRegistry(instance2)
-            local registryEntry4 = uiLibrary.RegistryMap[instance2]
-
-            if registryEntry4 then
-                for index3 = #uiLibrary.Registry, 1, -1 do
-                    __step(17)
-
-                    if uiLibrary.Registry[index3] == registryEntry4 then
-                        table.remove(uiLibrary.Registry, index3)
-                    end
-                end
-                for index4 = #uiLibrary.HudRegistry, 1, -1 do
-                    __step(18)
-
-                    if uiLibrary.HudRegistry[index4] == registryEntry4 then
-                        table.remove(uiLibrary.HudRegistry, index4)
-                    end
-                end
-
-                uiLibrary.RegistryMap[instance2] = nil
-            end
-        end
-        function uiLibrary:UpdateColorsUsingRegistry()
-            for key6, value6 in next, uiLibrary.Registry do
-                __step(19)
-
-                for key7, value7 in next, value6.Properties do
-                    __step(20)
-
-                    if typeof(value7) == 'string' then
-                        value6.Instance[key7] = uiLibrary[value7]
-                    elseif typeof(value7) == 'function' then
-                        value6.Instance[key7] = value7()
-                    end
-                end
-            end
-        end
-        function uiLibrary:GiveSignal(connection)
-            table.insert(uiLibrary.Signals, connection)
-        end
-        function uiLibrary:Unload()
-            for index5 = #uiLibrary.Signals, 1, -1 do
-                __step(21)
-
-                local connection2 = table.remove(uiLibrary.Signals, index5)
-
-                connection2:Disconnect()
-            end
-
-            if uiLibrary.OnUnload then
-                uiLibrary.OnUnload()
-            end
-
-            contextActionService:UnbindAction('Freeze')
-            capture16:Destroy()
-            capture20:Destroy()
-            capture05:Destroy()
-            capture09:Destroy()
-        end
-        function uiLibrary:CreateEvent(eventName)
-            self.Events[eventName] = Instance.new(capture02[3][capture02[2] ])
-        end
-        function uiLibrary:FireEvent(eventName2, ...)
-            self.Events[eventName2]:Fire(...)
-        end
-        function uiLibrary:OnEvent(eventName3)
-            return self.Events[eventName3].Event
-        end
-        function uiLibrary:OnUnload(callback2)
-            uiLibrary.OnUnload = callback2
-        end
-
-        local inputCallbacks = {}
-
-        function uiLibrary:BindToInput(inputType, callback3)
-            inputCallbacks[inputType] = inputCallbacks[inputType] or {}
-
-            table.insert(inputCallbacks[inputType], callback3)
-        end
-
-        uiLibrary:GiveSignal(userInputService.InputBegan:Connect(function(input7, ...)
-            if not capture07[3][capture07[2] ] then
-                return
-            end
-
-            local value189 = inputCallbacks[input7.KeyCode] or inputCallbacks[input7.UserInputType]
-
-            if value189 then
-                for key8, value8 in pairs(value189)do
-                    __step(22)
-                    task.spawn(value8, input7, ...)
-                end
-            end
-        end))
-
-        function uiLibrary:AddContextMenu(value193, value194)
-            local panel = {Visible = false}
-
-            panel.Options = {}
-            panel.Container = uiLibrary:Create('ImageButton', {
-                BorderColor3 = Color3.new(),
-                ZIndex = 14,
-                Visible = false,
-                Parent = capture09,
-                Image = '',
-                Active = false,
-                AutoButtonColor = false,
-            })
-            panel.Inner = uiLibrary:Create(capture01[3][capture01[2] ], {
-                BackgroundColor3 = uiLibrary.BackgroundColor,
-                BorderColor3 = uiLibrary.OutlineColor,
-                BorderMode = Enum.BorderMode.Inset,
-                Size = UDim2.fromScale(1, 1),
-                ZIndex = 15,
-                Parent = panel.Container,
-            })
-
-            uiLibrary:Create('UIListLayout', {
-                Name = 'Layout',
-                HorizontalAlignment = Enum.HorizontalAlignment.Left,
-                FillDirection = Enum.FillDirection.Vertical,
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                Parent = panel.Inner,
-            })
-            uiLibrary:Create('UIPadding', {
-                Name = 'Padding',
-                PaddingLeft = UDim.new(0, 0),
-                Parent = panel.Inner,
-            })
-
-            local function value196()
-                panel.Container.Position = UDim2.fromOffset(value193.AbsolutePosition.X + value193.AbsoluteSize.X + 4, value193.AbsolutePosition.Y + 1)
-            end
-            local function value197()
-                local value198 = 60
-
-                for key9, value9 in next, panel.Inner:GetChildren()do
-                    __step(23)
-
-                    if value9:IsA('TextLabel') then
-                        value198 = math.max(value198, value9.TextBounds.X)
-                    end
-                end
-
-                panel.Container.Size = UDim2.fromOffset(value198 + 8, panel.Inner.Layout.AbsoluteContentSize.Y + 4)
-            end
-
-            local value201 = false
-
-            (value194 or value193).InputBegan:Connect(function(input8)
-                if input8.UserInputType == Enum.UserInputType.MouseButton1 and not uiLibrary:MouseIsOverOpenedFrame() then
-                    return panel:Hide()
-                elseif input8.UserInputType == Enum.UserInputType.MouseButton2 and not uiLibrary:MouseIsOverOpenedFrame() then
-                    return panel:Show()
-                end
-            end)
-            uiLibrary:BindToInput(Enum.UserInputType.MouseButton1, function()
-                if value201 and not uiLibrary:IsMouseOverFrame(panel.Container) then
-                    panel:Hide()
-                end
-            end)
-            uiLibrary:BindToInput(Enum.UserInputType.MouseButton2, function()
-                if value201 and not uiLibrary:IsMouseOverFrame(panel.Container) and not uiLibrary:IsMouseOverFrame(value193) then
-                    panel:Hide()
-                end
-            end)
-            task.spawn(value196)
-            task.spawn(value197)
-            uiLibrary:AddToRegistry(panel.Inner, {
-                BackgroundColor3 = 'BackgroundColor',
-                BorderColor3 = capture15[3][capture15[2] ],
-            })
-
-            function panel:Show()
-                value196()
-                value197()
-
-                value201 = true
-
-                for key10, value10 in next, uiLibrary.OpenedFrames do
-                    __step(24)
-
-                    if key10.Name == 'Color' then
-                        key10.Visible = false
-                        uiLibrary.OpenedFrames[key10] = nil
-                    end
-                end
-
-                self.Container.Visible = true
-                uiLibrary.OpenedFrames[panel.Container] = true
-            end
-            function panel:Hide()
-                value201 = false
-                self.Container.Visible = false
-
-                task.wait()
-
-                uiLibrary.OpenedFrames[panel.Container] = nil
-            end
-            function panel:AddOption(text3, callback4)
-                if type(callback4) ~= 'function' then
-                    callback4 = function() end
-                end
-
-                local value210 = uiLibrary:CreateLabel({
-                    Active = false,
-                    Size = UDim2.new(1, 0, 0, 15),
-                    TextSize = 13,
-                    Text = text3,
-                    ZIndex = 16,
-                    Parent = self.Inner,
-                    TextXAlignment = Enum.TextXAlignment.Center,
-                })
-
-                uiLibrary:OnHighlight(value210, value210, {
-                    TextColor3 = 'AccentColor',
-                }, {
-                    TextColor3 = 'FontColor',
-                })
-                value210.InputBegan:Connect(function(input9)
-                    if input9.UserInputType ~= Enum.UserInputType.MouseButton1 then
-                        return
-                    end
-
-                    callback4()
-                end)
-
-                return value210
-            end
-
-            return panel
-        end
-
-        uiLibrary:GiveSignal(capture09.DescendantRemoving:Connect(function(value212)
-            if capture07[3][capture07[2] ] and uiLibrary.RegistryMap[value212] then
-                uiLibrary:RemoveFromRegistry(value212)
-            end
-        end))
-
-        function uiLibrary:SetWatermarkVisibility(visible)
-            uiLibrary.Watermark.Visible = visible
-        end
-        function uiLibrary:SetWatermark(text4)
-            local textWidth2, textHeight2 = uiLibrary:GetTextBounds(text4, uiLibrary.Font, 14)
-
-            uiLibrary.Watermark.Size = UDim2.new(0, textWidth2 + 15, 0, textHeight2 * 1.5 + 3)
-            uiLibrary.WatermarkText.Text = text4
-        end
-
-        local value219 = {
-            BarPosition = {
-                Top = UDim2.new(0, -1, 0, 0),
-                Left = UDim2.new(0, -1, 0, -1),
-                Right = UDim2.new(1, -2, 0, -1),
-                Bottom = UDim2.new(0, -1, 1, -2),
-            },
-            BarSize = {
-                Top = UDim2.new(1, 3, 0, 2),
-                Left = UDim2.new(0, 3, 1, 2),
-                Right = UDim2.new(0, 3, 1, 2),
-                Bottom = UDim2.new(1, 3, 0, 2),
-            },
-        }
-        local notificationStyle = uiLibrary.NotificationStyle
-        local charFn, maxFn = string.char, math.max
-        local value223 = function()
-            local overrideColor = notificationStyle.OverrideColor
-
-            if overrideColor then
-                return overrideColor()
-            end
-
-            return uiLibrary.MainColor, uiLibrary.AccentColor, uiLibrary.OutlineColor, uiLibrary.FontColor
-        end
-        local value225
-
-        do
-            local value226 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                BorderColor3 = Color3.new(0, 0, 0),
-                Position = UDim2.new(0, 100, 0, 10),
-                ClipsDescendants = true,
-                ZIndex = 100,
-            })
-            local value227 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                BorderMode = Enum.BorderMode.Inset,
-                Size = UDim2.new(1, 0, 1, 0),
-                ZIndex = 101,
-                Parent = value226,
-                Name = 'inner',
-            })
-            local value228 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                BackgroundColor3 = Color3.new(1, 1, 1),
-                BorderSizePixel = 0,
-                Position = UDim2.new(0, 1, 0, 1),
-                Size = UDim2.new(1, -2, 1, -2),
-                ZIndex = 102,
-                Parent = value227,
-                Name = 'inner',
-            })
-            local uIGradient = uiLibrary:Create('UIGradient', {
-                Rotation = -90,
-                Parent = value228,
-            })
-            local value230 = uiLibrary:CreateLabel({
-                Position = UDim2.new(0, 4, 0, 0),
-                Size = UDim2.new(1, -4, 1, 0),
-                TextXAlignment = Enum.TextXAlignment.Left,
-                TextSize = 14,
-                ZIndex = 103,
-                Name = 'label',
-                Parent = value228,
-            })
-            local value231 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                BorderSizePixel = 0,
-                ZIndex = 104,
-                Name = 'bar',
-                Parent = value226,
-            })
-
-            value225 = value226
-        end
-
-        function uiLibrary:CreatePopout(settings)
-            if type(settings.Title) ~= 'string' then
-                settings.Title = 'No title'
-            end
-            if typeof(settings.Position) ~= 'UDim2' then
-                settings.Position = UDim2.fromOffset(175, 50)
-            end
-
-            local screenGui2 = Instance.new('ScreenGui')
-
-            capture23(screenGui2)
-
-            screenGui2.ZIndexBehavior = Enum.ZIndexBehavior.Global
-            screenGui2.Parent = capture10
-            screenGui2.DisplayOrder = (settings.ZIndex or 0) + 19
-
-            if settings.Center then
-                settings.AnchorPoint = Vector2.new(0.5, 0.5)
-                settings.Position = UDim2.fromScale(0.5, 0.5)
-            end
-
-            local popout = {}
-            local value236 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                AnchorPoint = settings.AnchorPoint,
-                BackgroundColor3 = Color3.new(0, 0, 0),
-                BorderSizePixel = 0,
-                Position = settings.Position,
-                Size = UDim2.fromOffset(settings.Size.X, settings.Size.Y),
-                Visible = settings.AutoShow,
-                ZIndex = 1,
-                Parent = screenGui2,
-            })
-
-            if not settings.RemoveTopbar then
-                uiLibrary:MakeDraggableOutline(value236, 25)
-            end
-
-            local value237 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                BackgroundColor3 = uiLibrary.MainColor,
-                BorderColor3 = uiLibrary.OutlineColor,
-                BorderMode = Enum.BorderMode.Inset,
-                Position = UDim2.new(0, 1, 0, 1),
-                Size = UDim2.new(1, -2, 1, -2),
-                ZIndex = 1,
-                Parent = value236,
-            })
-
-            uiLibrary:AddToRegistry(value237, {
-                BackgroundColor3 = 'MainColor',
-                BorderColor3 = capture15[3][capture15[2] ],
-            })
-
-            if not settings.RemoveTopbar then
-                local value238 = uiLibrary:CreateLabel({
-                    Position = UDim2.new(0, 0, 0, 0),
-                    Size = UDim2.new(1, 0, 0, 25),
-                    Text = settings.Title or '',
-                    TextXAlignment = Enum.TextXAlignment.Center,
-                    ZIndex = 1,
-                    Font = uiLibrary.Font,
-                    Parent = value237,
-                })
-                local textLabel2 = uiLibrary:Create('TextLabel', {
-                    BackgroundTransparency = 1,
-                    Font = uiLibrary.Font,
-                    TextColor3 = uiLibrary.AccentColor,
-                    TextSize = 16,
-                    TextStrokeTransparency = 0,
-                    Position = UDim2.new(0, -8, 0, 0),
-                    Size = UDim2.new(1, 0, 0, 25),
-                    Text = settings.Version or '',
-                    RichText = true,
-                    TextXAlignment = Enum.TextXAlignment.Right,
-                    ZIndex = 1,
-                    Parent = value237,
-                })
-
-                uiLibrary:AddToRegistry(textLabel2, {
-                    TextColor3 = 'AccentColor',
-                })
-            end
-
-            local value240 = settings.RemoveTopbar and 8 or 25
-            local value241 = settings.RemoveTopbar and -16 or -33
-            local value242 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                BackgroundColor3 = uiLibrary.BackgroundColor,
-                BorderColor3 = uiLibrary.OutlineColor,
-                Position = UDim2.new(0, 8, 0, value240),
-                Size = UDim2.new(1, -16, 1, value241),
-                ZIndex = 1,
-                Parent = value237,
-            })
-
-            uiLibrary:AddToRegistry(value242, {
-                BackgroundColor3 = 'BackgroundColor',
-                BorderColor3 = capture15[3][capture15[2] ],
-            })
-
-            local value243 = uiLibrary:Create(capture01[3][capture01[2] ], {
-                BackgroundColor3 = uiLibrary.BackgroundColor,
-                BorderColor3 = Color3.new(0, 0, 0),
-                BorderMode = Enum.BorderMode.Inset,
-                Position = UDim2.new(0, 0, 0, 0),
-                Size = UDim2.new(1, 0, 1, 0),
-                ZIndex = 1,
-                Parent = value242,
-            })
-
-            uiLibrary:AddToRegistry(value243, {
-                BackgroundColo... (Tiempo restante: 14 MB)
+    elseif q == "" then
+        for name, nav in pairs(navButtons) do nav.Visible = true; nav.BackgroundColor3 = name == currentPage and C.purpleDark or C.panel2 end
+    end
+end)
+
+-- Draggable window from header.
+local winDragging, winInput, winDragStart, winStartPos = false, nil, nil, nil
+top.InputBegan:Connect(function(inputObj)
+    if inputObj.UserInputType == Enum.UserInputType.MouseButton1 or inputObj.UserInputType == Enum.UserInputType.Touch then
+        winDragging, winInput = true, inputObj
+        winDragStart, winStartPos = inputObj.Position, window.Position
+    end
+end)
+UserInputService.InputChanged:Connect(function(inputObj)
+    if winDragging and (inputObj.UserInputType == Enum.UserInputType.MouseMovement or inputObj == winInput) then
+        local delta = inputObj.Position - winDragStart
+        window.Position = UDim2.new(winStartPos.X.Scale, winStartPos.X.Offset + delta.X, winStartPos.Y.Scale, winStartPos.Y.Offset + delta.Y)
+    end
+end)
+UserInputService.InputEnded:Connect(function(inputObj)
+    if inputObj == winInput or inputObj.UserInputType == Enum.UserInputType.MouseButton1 then winDragging = false; winInput = nil end
+end)
+
+-- Draggable floating toggle; tap toggles, drag moves it.
+local orbDragging, orbInput, orbStart, orbPos, orbMoved = false, nil, nil, nil, false
+orb.InputBegan:Connect(function(inputObj)
+    if inputObj.UserInputType == Enum.UserInputType.MouseButton1 or inputObj.UserInputType == Enum.UserInputType.Touch then
+        orbDragging, orbInput, orbMoved = true, inputObj, false
+        orbStart, orbPos = inputObj.Position, orb.Position
+    end
+end)
+UserInputService.InputChanged:Connect(function(inputObj)
+    if orbDragging and (inputObj.UserInputType == Enum.UserInputType.MouseMovement or inputObj == orbInput) then
+        local delta = inputObj.Position - orbStart
+        if delta.Magnitude > 5 then orbMoved = true end
+        orb.Position = UDim2.new(orbPos.X.Scale, orbPos.X.Offset + delta.X, orbPos.Y.Scale, orbPos.Y.Offset + delta.Y)
+    end
+end)
+UserInputService.InputEnded:Connect(function(inputObj)
+    if orbDragging and (inputObj == orbInput or inputObj.UserInputType == Enum.UserInputType.MouseButton1) then
+        orbDragging = false
+        if not orbMoved then window.Visible = not window.Visible end
+        orbInput = nil
+    end
+end)
+
+-- Initial state
+for name, nav in pairs(navButtons) do nav.BackgroundColor3 = name == currentPage and C.purpleDark or C.panel2 end
+pages[currentPage].Visible = true
+hud.Text = "  Yabujin | " .. LocalPlayer.Name .. " | -- fps | -- ms"
+print("[Yabujin] Local visual UI loaded. Server-side Rivals values are unchanged.")
