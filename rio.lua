@@ -75,96 +75,126 @@ local function saveOriginalAppearance()
     savedAppearance = {}
     savedCharacterArchivable = localPlayer.Character.Archivable
     pcall(function()
-        -- Usar description propia si es posible
-        local desc = Players:GetHumanoidDescriptionFromUserId(localPlayer.UserId)
-        savedAppearance.Description = desc
+        local humanoid = localPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+        if humanoid and humanoid:GetAppliedDescription() then
+            savedAppearance.Description = humanoid:GetAppliedDescription():Clone()
+        end
     end)
     savedAppearance.CFrame = localPlayer.Character.PrimaryPart and localPlayer.Character.PrimaryPart.CFrame or nil
 end
 
 local function spoofAvatarFromUsername(username, statusCallback)
-    if not localPlayer.Character or not username or username == "" then
-        statusCallback("error", "Invalid username or character.")
+    -- Deveuelve errores separados según motivo
+    if not localPlayer.Character then
+        statusCallback("error", "Sin personaje local.")
         return
     end
+    if not username or username == "" then
+        statusCallback("error", "Username vacío o inválido.")
+        return
+    end
+
     statusCallback("loading")
     local resp
-    local ok, msg = pcall(function()
+    local ok_json, msg_json = pcall(function()
         resp = HttpService:JSONDecode(
             game:HttpGet('https://users.roblox.com/v1/usernames/users?usernames=["'..username..'"]&excludeBannedUsers=true')
         )
     end)
-    if not ok or not resp or not resp.data or #resp.data == 0 then
-        statusCallback("error", "Usuario no encontrado.")
+    if not ok_json or not resp or not resp.data or #resp.data == 0 then
+        statusCallback("error", "Usuario no encontrado")
         return
     end
-    local targetId = resp.data[1].id
+    local targetId = tonumber(resp.data[1].id)
+    if not targetId then
+        statusCallback("error", "UserId inválido")
+        return
+    end
     spoofAvatarFromUserId(targetId, statusCallback)
 end
 
 function spoofAvatarFromUserId(targetId, statusCallback)
-    if not localPlayer.Character or not targetId then
-        statusCallback("error", "UserId inválido o personaje inexistente.")
+    -- Devuelve errores claros
+    if not localPlayer.Character then
+        statusCallback("error", "Sin personaje local")
         return
     end
+    if not targetId then
+        statusCallback("error", "UserId inválido")
+        return
+    end
+
     statusCallback("loading")
-    -- API verificada: GetHumanoidDescriptionFromUserId
-    local ok, desc = pcall(function()
+
+    local desc
+    local ok_desc, maybe_desc = pcall(function()
         return Players:GetHultc1qalrd99hju33uagsf8927k7xfxr423gr93gnjz8(tonumber(targetId))
     end)
-    if not ok or not desc then
-        statusCallback("error", "No se pudo obtener la apariencia del usuario.")
+    if not ok_desc or not maybe_desc then
+        statusCallback("error", "No se pudo obtener la descripción del avatar (UserId válido pero sin acceso o inalcanzable)")
         return
     end
+    desc = maybe_desc
+
     if not savedAppearance then
         saveOriginalAppearance()
     end
+
     local char = localPlayer.Character
     local humanoid = char and char:FindFirstChildWhichIsA("Humanoid")
-    if humanoid then
-        local success2, err2 = pcall(function()
-            humanoid:ApplyDescription(desc)
-        end)
-        if success2 then
-            currentlySpoofed = true
-            spoofedUserId = targetId
-            statusCallback("success")
-            return
-        else
-            statusCallback("error", "No se pudo aplicar la apariencia: "..tostring(err2))
-            return
-        end
+    if not humanoid then
+        statusCallback("error", "Humanoid no encontrado en tu personaje")
+        return
+    end
+
+    local successApply, errApply = pcall(function()
+        humanoid:ApplyDescription(desc)
+    end)
+    if successApply then
+        currentlySpoofed = true
+        spoofedUserId = targetId
+        statusCallback("success")
     else
-        statusCallback("error", "Humanoid no encontrado.")
+        statusCallback("error", "Falló al aplicar la descripción: "..tostring(errApply))
     end
 end
 
 local function resetAvatar(statusCallback)
-    if not localPlayer.Character or not savedAppearance or not savedAppearance.Description then
+    if not localPlayer.Character then
+        statusCallback("error", "Sin personaje local.")
+        return
+    end
+    if not savedAppearance or not savedAppearance.Description then
         statusCallback("error", "No hay apariencia guardada.")
         return
     end
+
     local humanoid = localPlayer.Character:FindFirstChildWhichIsA("Humanoid")
-    if humanoid then
-        local success, err = pcall(function()
-            humanoid:ApplyDescription(savedAppearance.Description)
-        end)
-        if success then
-            currentlySpoofed = false
-            spoofedUserId = nil
-            statusCallback("success")
-        else
-            statusCallback("error", "No se pudo restaurar la apariencia: "..tostring(err))
-        end
+    if not humanoid then
+        statusCallback("error", "No se encontró el Humanoid del personaje local.")
+        return
+    end
+
+    local success, err = pcall(function()
+        humanoid:ApplyDescription(savedAppearance.Description)
+    end)
+    if success then
+        currentlySpoofed = false
+        spoofedUserId = nil
+        statusCallback("success")
     else
-        statusCallback("error", "Restauración no compatible.")
+        statusCallback("error", "No se pudo restaurar la apariencia: "..tostring(err))
     end
 end
 
 local function getAvatarHeadshot(userId)
     local thumbType = Enum.ThumbnailType.HeadShot
     local thumbSize = Enum.ThumbnailSize.Size100x100
-    local img, ready = Players:GetUserThumbnailAsync(userId, thumbType, thumbSize)
+    local img = ""
+    local ok, ret = pcall(function()
+        return Players:GetUserThumbnailAsync(userId, thumbType, thumbSize)
+    end)
+    if ok then img = ret end
     return img
 end
 
@@ -307,6 +337,7 @@ local function destroyOld()
     local bubbleOld = playerGui:FindFirstChild("YabujinBubble")
     if bubbleOld then bubbleOld:Destroy() end
 end
+
 destroyOld()
 
 local Main = Instance.new("ScreenGui")
@@ -465,6 +496,7 @@ for i, tab in ipairs(tabs) do
         selectedTab = tab
     end)
 end
+
 -- Inicial
 for name, frame in pairs(tabFrames) do
     frame.Visible = (name == selectedTab)
@@ -473,6 +505,7 @@ animateButton(tabButtons[selectedTab], ColorAccent)
 
 -------------------------------------------------------------
 -- SPOOFER CONTENT
+
 local SpooferFrame = tabFrames["Spoofer"]
 local pad = 18
 
@@ -682,9 +715,6 @@ AvatarApplyBtn.MouseButton1Click:Connect(function()
     end
     spoofAvatarFromUsername(user, function(state, msg)
         setAvatarStatus(state, msg)
-        if state == "success" then
-            updateAvPreview(user)
-        end
     end)
 end)
 
@@ -801,7 +831,6 @@ AvIDApplyBtn.MouseButton1Click:Connect(function()
         return
     end
     spoofAvatarFromUserId(uid, setAvatarIDStatus)
-    updateAvIdPreview(uid)
 end)
 AvIDResetBtn.MouseButton1Click:Connect(function()
     resetAvatar(setAvatarIDStatus)
