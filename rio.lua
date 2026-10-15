@@ -298,89 +298,123 @@ local skyOptions = {
     },
 }
 
+local Lighting = game:GetService("Lighting")
+
+local SKY_PROPERTIES = {
+    "SkyboxBk",
+    "SkyboxDn",
+    "SkyboxFt",
+    "SkyboxLf",
+    "SkyboxRt",
+    "SkyboxUp"
+}
+
+local originalSky = nil
+local createdSky = false
+
 local function findCurrentSky()
-    for _, v in pairs(game:GetService("Lighting"):GetChildren()) do
-        if v:IsA("Sky") then
-            return v
+    for _, obj in ipairs(Lighting:GetChildren()) do
+        if obj:IsA("Sky") then
+            return obj
         end
     end
     return nil
 end
 
 local function saveOriginalSky()
-    if not originalSky then
-        local current = findCurrentSky()
-        if current then
-            originalSky = {}
-            for _, p in pairs({"SkyboxBk","SkyboxDn","SkyboxFt","SkyboxLf","SkyboxRt","SkyboxUp"}) do
-                originalSky[p] = current[p]
-            end
-            originalSky._ref = current
-        else
-            originalSky = false -- no había sky original
-        end
+    if originalSky ~= nil then
+        return
+    end
+
+    local sky = findCurrentSky()
+
+    if not sky then
+        originalSky = false
+        return
+    end
+
+    originalSky = {}
+
+    for _, property in ipairs(SKY_PROPERTIES) do
+        originalSky[property] = sky[property]
     end
 end
 
 local function applySkybox(skyInfo)
-    local Lighting = game:GetService("Lighting")
+    if type(skyInfo) ~= "table" then
+        return false, "Configuración de cielo inválida"
+    end
+
     saveOriginalSky()
+
     local sky = findCurrentSky()
+
+    if not sky then
+        sky = Instance.new("Sky")
+        sky.Name = "YabujinCustomSky"
+        sky.Parent = Lighting
+        createdSky = true
+    end
+
+    local ok, err = pcall(function()
+        for _, property in ipairs(SKY_PROPERTIES) do
+            local assetId = skyInfo[property]
+
+            if type(assetId) ~= "string"
+                or not assetId:match("^rbxassetid://%d+$") then
+                error("ID inválido: " .. property)
+            end
+
+            sky[property] = assetId
+        end
+    end)
+
+    if not ok then
+        return false, tostring(err)
+    end
+
+    return true
+end
+
+local function restoreOriginalSky()
+    if originalSky == nil then
+        return false, "No se guardó el cielo original"
+    end
+
+    if originalSky == false then
+        if createdSky then
+            local sky = findCurrentSky()
+            if sky and sky.Name == "YabujinCustomSky" then
+                sky:Destroy()
+            end
+            createdSky = false
+        end
+
+        originalSky = nil
+        currentSkyName = "Original"
+        return true
+    end
+
+    local sky = findCurrentSky()
+
     if not sky then
         sky = Instance.new("Sky")
         sky.Parent = Lighting
     end
-    -- Asegura reemplazo de texturas
-    local changed = false
-    for k,v in pairs(skyInfo) do
-        if sky[k] ~= nil then
-            sky[k] = v
-            changed = true
-        end
-    end
-    return changed
-end
 
-local function restoreOriginalSky()
-    local Lighting = game:GetService("Lighting")
-    if originalSky == nil then
-        return false
+    local ok, err = pcall(function()
+        for _, property in ipairs(SKY_PROPERTIES) do
+            sky[property] = originalSky[property]
+        end
+    end)
+
+    if not ok then
+        return false, tostring(err)
     end
 
-    -- Si no existía un Sky antes de aplicar uno personalizado, elimina el temporal.
-    if originalSky == false then
-        local current = findCurrentSky()
-        if current then current:Destroy() end
-        currentSkyName = "Original"
-        originalSky = nil
-        return true
-    end
-
-    local originalRef = originalSky._ref
-    local current = findCurrentSky()
-    if originalRef and originalRef.Parent then
-        if current and current ~= originalRef then
-            current:Destroy()
-        end
-        if originalRef.Parent ~= Lighting then
-            originalRef.Parent = Lighting
-        end
-        for _, propertyName in ipairs({
-            "SkyboxBk", "SkyboxDn", "SkyboxFt",
-            "SkyboxLf", "SkyboxRt", "SkyboxUp"
-        }) do
-            local value = originalSky[propertyName]
-            if value ~= nil then
-                originalRef[propertyName] = value
-            end
-        end
-    else
-        -- Si la instancia original dejó de existir, elimina el cielo temporal.
-        if current then current:Destroy() end
-    end
-
-    currentSkyName = "Original"
     originalSky = nil
+    createdSky = false
+    currentSkyName = "Original"
     return true
 end
 
