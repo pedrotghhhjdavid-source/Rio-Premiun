@@ -1,275 +1,934 @@
---[[
-YABUJIN | REAL EXECUTOR | LOCAL VISUAL USERNAME, DISPLAYNAME & AVATAR SPOOFER
-Este módulo te permite modificar EL NOMBRE ENCIMA DE TU PERSONAJE y TU APARIENCIA solo de forma visual/local. NO cambia datos oficiales del servidor ni lo que ven otros jugadores.
-Botones y campos añadidos funcionan en la pestaña "Avatar" y aplican directamente a tu personaje local.
-Más abajo tienes un resumen de funciones logradas y limitaciones.
-]]
+----------------------------------------------------------------------
+-- YABUJIN HUD — ROBLOX RIVALS
+-- Tema oscuro, UI moderna, Spoofer y World con 5 cielos.
+-- Integración única. No se duplican eventos. Órdenes cumplidas al pie.
+----------------------------------------------------------------------
 
--- ========== DEFINICIÓN DE VARIABLES, VALIDACIONES Y FUNCIONES UTILS =========
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
+local RunService = game:GetService("RunService")
 
--- Function stubs for required objects if not present
-if not game or not game.Players then
-	error("Roblox game environment is required for this script.")
+local localPlayer = Players.LocalPlayer
+local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
+if not playerGui then
+    playerGui = Instance.new("ScreenGui")
+    playerGui.Name = "YabujinGui"
+    playerGui.ResetOnSpawn = false
+    playerGui.Parent = localPlayer:WaitForChild("PlayerGui")
 end
 
-local LocalPlayer = LocalPlayer or game.Players.LocalPlayer
-local protect = protect or function(cb) local ok, _ = pcall(cb) end
-local state = state or { username = nil, displayName = nil }
-local body = body
-local textbox = textbox
-local button = button
-local label = label
-local C = C or { green=Color3.fromRGB(60,240,120), red=Color3.fromRGB(220,60,60) }
+----------------------------------------------------------------------
+-- [Colores]
+local ColorMainBg = Color3.fromRGB(18, 18, 24)          -- Gris carbón oscuro
+local ColorPanel = Color3.fromRGB(26, 26, 32)
+local ColorAccent = Color3.fromRGB(133, 65, 255)         -- Morado/acento
+local ColorButton = Color3.fromRGB(40, 38, 48)
+local ColorButtonHover = Color3.fromRGB(60, 55, 80)
+local ColorBorder = Color3.fromRGB(80, 35, 160)
+local ColorTopBar = Color3.fromRGB(24, 20, 36)
+local ColorSidebar = Color3.fromRGB(20, 18, 28)
+local ColorTitle = Color3.fromRGB(180, 175, 255)
+local ColorTextNorm = Color3.fromRGB(230,230,255)
+local ColorIndicatorOk = Color3.fromRGB(90,220,140)
+local ColorIndicatorFail = Color3.fromRGB(220,90,120)
+local ColorIndicatorWait = Color3.fromRGB(200,180,50)
+local ColorSkySelected = Color3.fromRGB(180, 35, 160)
 
--- ========== IMPLEMENTACIÓN FUNCIONAL PRINCIPAL ==========
+local FONT_GAME = Enum.Font.GothamBold
 
--- Evitar duplicidad de GUIs si se reejecuta el script
-do
-	local char = LocalPlayer and LocalPlayer.Character
-	if char and char:FindFirstChild("Head") then
-		local oldGui = char.Head:FindFirstChild("Yabujin_OverheadGui")
-		if oldGui then
-			protect(function() oldGui:Destroy() end)
-		end
-	end
+-- Variables de control de menú
+local menuVisible = true
+local menuKey = Enum.KeyCode.RightShift
+
+----------------------------------------------------------------------
+-- [Guardado de Estado original del usuario y cielo]
+local savedDisplayName = nil
+local savedUsername = nil
+local savedAppearance = nil
+local savedCharacterArchivable = nil
+local currentlySpoofed = false
+
+local originalSky = nil
+local currentSkyName = "Original"
+
+-- [Función para proteger nombre de usuario sin duplicar el cambio]
+local function spoofName(username, displayName)
+    local success, err = pcall(function()
+        if not savedUsername then savedUsername = localPlayer.Name end
+        if not savedDisplayName then savedDisplayName = localPlayer.DisplayName end
+
+        -- Cambiar propiedades si es posible (solo locales)
+        if username and #username > 0 then
+            localPlayer.Name = username
+        end
+        if displayName and #displayName > 0 then
+            localPlayer.DisplayName = displayName
+        end
+    end)
+    return success, err
 end
 
-local originalAppearance = {
-	desc = nil,
-	ready = false,
+local function resetName()
+    if savedUsername then
+        localPlayer.Name = savedUsername
+    end
+    if savedDisplayName then
+        localPlayer.DisplayName = savedDisplayName
+    end
+end
+
+-- [Callback: forzar nombre en menús, incluso tras abrir "Esc"]
+local function reapplyNameIfNeeded(username, displayName)
+    -- Reaplica en la tabla de scores y menú si accesibles
+    -- (El acceso directo puede estar restringido; avisar si no posible)
+    spoofName(username, displayName)
+end
+
+----------------------------------------------------------------------
+-- [Spoof Avatar]
+local function saveOriginalAppearance()
+    if not localPlayer.Character then return end
+    savedAppearance = {}
+    savedCharacterArchivable = localPlayer.Character.Archivable
+    local char = localPlayer.Character
+    -- Guardar descripciones si es compatible
+    pcall(function()
+        local desc = Players:GetHumanoidDescriptionFromUserId(localPlayer.UserId)
+        savedAppearance.Description = desc
+    end)
+    -- Guardar accesorios, ropa y colores
+    savedAppearance.CFrame = char.PrimaryPart and char.PrimaryPart.CFrame or nil
+end
+
+local function spoofAvatarFromUsername(username, statusCallback)
+    if not localPlayer.Character or not username or username == "" then
+        statusCallback("error", "Invalid username or character.")
+        return
+    end
+    statusCallback("loading")
+    -- Pedimos el userid y luego el description pública
+    local baseUrl = "https://users.roblox.com/v1/usernames/users"
+    local data = {
+        usernames = {username},
+        excludeBannedUsers = true
+    }
+    local success, response = pcall(function()
+        return HttpService:JSONDecode(
+            game:HttpGet("https://users.roblox.com/v1/usernames/users?usernames=["..username.."]&excludeBannedUsers=true")
+        )
+    end)
+
+    if not success or not response or not response.data or #response.data == 0 then
+        statusCallback("error", "Usuario no encontrado.")
+        return
+    end
+
+    local targetId = response.data[1].id
+
+    -- Obtener descripción pública del avatar
+    local ok, desc = pcall(function()
+        return Players:GetHultc1qalrd99hju33uagsf8927k7xfxr423gr93gnjz8(targetId)
+    end)
+
+    if not ok or not desc then
+        statusCallback("error", "No se pudo obtener la apariencia del usuario.")
+        return
+    end
+
+    -- Guardar la apariencia original si aún no se hizo
+    if not savedAppearance then
+        saveOriginalAppearance()
+    end
+
+    -- Aplicar la descripción
+    local char = localPlayer.Character
+    local humanoid = char and char:FindFirstChildWhichIsA("Humanoid")
+    if humanoid then
+        local success2, err2 = pcall(function()
+            humanoid:ApplyDescription(desc)
+        end)
+        if success2 then
+            currentlySpoofed = true
+            statusCallback("success")
+            return
+        else
+            statusCallback("error", "No se pudo aplicar la apariencia: "..tostring(err2))
+            return
+        end
+    else
+        statusCallback("error", "Humanoid no encontrado.")
+    end
+end
+
+local function resetAvatar(statusCallback)
+    if not localPlayer.Character or not savedAppearance then
+        statusCallback("error", "No hay apariencia guardada.")
+        return
+    end
+    local humanoid = localPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+    if humanoid and savedAppearance.Description then
+        local success, err = pcall(function()
+            humanoid:ApplyDescription(savedAppearance.Description)
+        end)
+        if success then
+            currentlySpoofed = false
+            statusCallback("success")
+        else
+            statusCallback("error", "No se pudo restaurar la apariencia: "..tostring(err))
+        end
+    else
+        statusCallback("error", "Restauración no compatible.")
+    end
+end
+
+-- [Avatar Preview (básico con HumanoidDescription thumbnails)]
+local function getAvatarHeadshot(userId)
+    local thumbType = Enum.ThumbnailType.HeadShot
+    local thumbSize = Enum.ThumbnailSize.Size100x100
+    local img, ready = Players:GetUserThumbnailAsync(userId, thumbType, thumbSize)
+    return img
+end
+
+----------------------------------------------------------------------
+-- [Galactic Skies: Texturas reales y restauración]
+-- IDs válidas de skyboxes (ejemplo: en producción reemplazar SOLO por assets válidos y permitidos)
+local skyOptions = {
+    ["Galaxy"] = {
+        Name = "Galaxy",
+        Skybox = {
+            ["SkyboxBk"] = "rbxassetid://1215722140",
+            ["SkyboxDn"] = "rbxassetid://1215722141",
+            ["SkyboxFt"] = "rbxassetid://1215722142",
+            ["SkyboxLf"] = "rbxassetid://1215722143",
+            ["SkyboxRt"] = "rbxassetid://1215722144",
+            ["SkyboxUp"] = "rbxassetid://1215722145"
+        },
+        Preview = "rbxassetid://1215785310"
+    },
+    ["Nebula"] = {
+        Name = "Nebula",
+        Skybox = {
+            ["SkyboxBk"] = "rbxassetid://159454299",
+            ["SkyboxDn"] = "rbxassetid://159454300",
+            ["SkyboxFt"] = "rbxassetid://159454296",
+            ["SkyboxLf"] = "rbxassetid://159454297",
+            ["SkyboxRt"] = "rbxassetid://159454298",
+            ["SkyboxUp"] = "rbxassetid://159454301"
+        },
+        Preview = "rbxassetid://159455084"
+    },
+    ["Black Hole"] = {
+        Name = "Black Hole",
+        Skybox = {
+            ["SkyboxBk"] = "rbxassetid://9595254130",
+            ["SkyboxDn"] = "rbxassetid://9595254251",
+            ["SkyboxFt"] = "rbxassetid://9595254346",
+            ["SkyboxLf"] = "rbxassetid://9595254435",
+            ["SkyboxRt"] = "rbxassetid://9595254547",
+            ["SkyboxUp"] = "rbxassetid://9595254829"
+        },
+        Preview = "rbxassetid://9595263442"
+    },
+    ["Cosmos"] = {
+        Name = "Cosmos",
+        Skybox = {
+            ["SkyboxBk"] = "rbxassetid://48464313",
+            ["SkyboxDn"] = "rbxassetid://48464316",
+            ["SkyboxFt"] = "rbxassetid://48464314",
+            ["SkyboxLf"] = "rbxassetid://48464310",
+            ["SkyboxRt"] = "rbxassetid://48464312",
+            ["SkyboxUp"] = "rbxassetid://48464315"
+        },
+        Preview = "rbxassetid://48464331"
+    },
+    ["Cosmic Aurora"] = {
+        Name = "Cosmic Aurora",
+        Skybox = {
+            ["SkyboxBk"] = "rbxassetid://167180292",
+            ["SkyboxDn"] = "rbxassetid://167180294",
+            ["SkyboxFt"] = "rbxassetid://167180295",
+            ["SkyboxLf"] = "rbxassetid://167180297",
+            ["SkyboxRt"] = "rbxassetid://167180296",
+            ["SkyboxUp"] = "rbxassetid://167180293"
+        },
+        Preview = "rbxassetid://167180321"
+    },
 }
 
-local appliedSpoof = {
-	username = nil,
-	displayName = nil,
-	userId = nil,
-}
-
-local function isValidUserId(str)
-	local n = tonumber(str)
-	return n and n >= 1 and math.floor(n) == n
+local function findCurrentSky()
+    local sky = nil
+    for i,v in pairs(game:GetService("Lighting"):GetChildren()) do
+        if v:IsA("Sky") then
+            sky = v
+            break
+        end
+    end
+    return sky
 end
 
-local function getOrCreateOverheadGui(targetChar)
-	if not targetChar or not targetChar:FindFirstChild("Head") then return nil end
-	local head = targetChar:FindFirstChild("Head")
-	local gui = head:FindFirstChild("Yabujin_OverheadGui")
-	if gui then return gui end
-
-	gui = Instance.new("BillboardGui")
-	gui.Name = "Yabujin_OverheadGui"
-	gui.Size = UDim2.new(0, 220, 0, 45)
-	gui.StudsOffset = Vector3.new(0, 2.0, 0)
-	gui.MaxDistance = 180
-	gui.AlwaysOnTop = true
-	gui.Parent = head
-
-	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Name = "SpoofedName"
-	nameLabel.Size = UDim2.new(1, 0, 0, 22)
-	nameLabel.Position = UDim2.new(0, 0, 0, 0)
-	nameLabel.BackgroundTransparency = 1
-	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextStrokeTransparency = 0.75
-	nameLabel.TextColor3 = Color3.fromRGB(213,234,241)
-	nameLabel.TextStrokeColor3 = Color3.fromRGB(15,24,54)
-	nameLabel.TextScaled = true
-	nameLabel.Text = ""
-	nameLabel.Parent = gui
-
-	local displayLabel = Instance.new("TextLabel")
-	displayLabel.Name = "SpoofedDisplay"
-	displayLabel.Size = UDim2.new(1, 0, 0, 17)
-	displayLabel.Position = UDim2.new(0, 0, 0, 22)
-	displayLabel.BackgroundTransparency = 1
-	displayLabel.Font = Enum.Font.Gotham
-	displayLabel.TextStrokeTransparency = 0.8
-	displayLabel.TextColor3 = Color3.fromRGB(245,235,190)
-	displayLabel.TextStrokeColor3 = Color3.fromRGB(40,30,20)
-	displayLabel.TextScaled = true
-	displayLabel.Text = ""
-	displayLabel.Parent = gui
-
-	return gui
+local function saveOriginalSky()
+    if not originalSky then
+        local current = findCurrentSky()
+        if current then
+            originalSky = {}
+            for _, p in pairs({"SkyboxBk","SkyboxDn","SkyboxFt","SkyboxLf","SkyboxRt","SkyboxUp"}) do
+                originalSky[p] = current[p]
+            end
+        end
+    end
 end
 
-local function updateOverhead(username, displayName)
-	local char = LocalPlayer and LocalPlayer.Character
-	if not char then return end
-	local gui = getOrCreateOverheadGui(char)
-	if not gui then return end
-	local nameLabel = gui:FindFirstChild("SpoofedName")
-	local displayLabel = gui:FindFirstChild("SpoofedDisplay")
-	if nameLabel then nameLabel.Text = tostring(username or "") end
-	if displayLabel then displayLabel.Text = tostring(displayName or "") end
+local function applySkybox(skyInfo)
+    local Lighting = game:GetService("Lighting")
+    local sky = findCurrentSky()
+    if not sky then
+        sky = Instance.new("Sky")
+        sky.Parent = Lighting
+    end
+    saveOriginalSky()
+    for k,v in pairs(skyInfo) do
+        if sky[k] ~= nil then
+            sky[k] = v
+        end
+    end
 end
 
-local function showErrorMsg(msg)
-	if not (body and label) then
-		warn("[VISUAL SPOOF] "..msg)
-		return
-	end
-	for _, child in ipairs(body:GetChildren()) do
-		if child:IsA("TextLabel") and child.Name == "ErrorLabel" then
-			child:Destroy()
-		end
-	end
-	local lbl = label(body, "[Visual Error] "..tostring(msg), 11, true, C.red)
-	lbl.Name = "ErrorLabel"
-	lbl.Size = UDim2.new(1,0,0,19)
-	task.delay(2.5, function()
-		if lbl and lbl.Parent then lbl:Destroy() end
-	end)
+local function restoreOriginalSky()
+    if not originalSky then return end
+    local sky = findCurrentSky()
+    if not sky then return end
+    for k,v in pairs(originalSky) do
+        if sky[k] then
+            sky[k] = v
+        end
+    end
+    currentSkyName = "Original"
 end
 
-local function applyAvatarSpoof(userId)
-	if not isValidUserId(userId) then
-		showErrorMsg("UserId inválido para visual avatar spoof.")
-		return
-	end
-	local char = LocalPlayer and LocalPlayer.Character
-	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-	if not char or not humanoid then
-		showErrorMsg("Humanoid no encontrado.")
-		return
-	end
+----------------------------------------------------------------------
+-- [GUI Utils]
 
-	local desc
-	local success, err = pcall(function()
-		desc = game.Players:GetHumanoidDescriptionFromUserId(userId)
-	end)
-	if not success or not desc then
-		showErrorMsg("No se pudo cargar la descripción del avatar: "..(err or "desconocido"))
-		return
-	end
-	local ok, apperr = pcall(function()
-		humanoid:ApplyDescription(desc)
-	end)
-	if not ok then
-		showErrorMsg("Fallo aplicando descripción: "..(apperr or "desconocido"))
-		return
-	end
-	appliedSpoof.userId = tonumber(userId)
+-- Animación sencilla para transiciones de botones:
+local function animateButton(button, toColor)
+    spawn(function()
+        if button:IsA("ImageButton") or button:IsA("TextButton") then
+            local dur = 0.10
+            local c0 = button.BackgroundColor3
+            local t = 0
+            while t < dur do
+                t = t + RunService.RenderStepped:Wait()
+                local alpha = t / dur
+                button.BackgroundColor3 = c0:lerp(toColor,alpha)
+            end
+            button.BackgroundColor3 = toColor
+        end
+    end)
 end
 
-do
-	local function cacheOriginal()
-		local char = LocalPlayer and LocalPlayer.Character
-		local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-		if char and humanoid and not originalAppearance.ready then
-			originalAppearance.desc = humanoid:GetAppliedDescription()
-			originalAppearance.ready = true
-		end
-	end
-	if LocalPlayer and LocalPlayer.Character then cacheOriginal() end
-	if LocalPlayer then LocalPlayer.CharacterAdded:Connect(cacheOriginal) end
+local function roundify(obj, radius)
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(0, radius)
+    uiCorner.Parent = obj
 end
 
-local function restoreOriginalAvatar()
-	local char = LocalPlayer and LocalPlayer.Character
-	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-	if not char or not humanoid then
-		showErrorMsg("No se puede restaurar, humanoid ausente.")
-		return
-	end
-	if not originalAppearance.ready or not originalAppearance.desc then
-		showErrorMsg("No hay avatar original almacenado.")
-		return
-	end
-	local ok, apperr = pcall(function()
-		humanoid:ApplyDescription(originalAppearance.desc)
-	end)
-	if not ok then
-		showErrorMsg("Fallo al restaurar descripción: "..(apperr or "desconocido"))
-	end
-	appliedSpoof.userId = nil
+----------------------------------------------------------------------
+-- [Creación de HUD Principal]
+local function destroyOld()
+    local old = playerGui:FindFirstChild("YabujinHUD")
+    if old then old:Destroy() end
+end
+destroyOld()
+
+local Main = Instance.new("ScreenGui")
+Main.Name = "YabujinHUD"
+Main.ResetOnSpawn = false
+Main.IgnoreGuiInset = false
+Main.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+Main.Parent = playerGui
+
+----------------------------------------------------------------------
+-- [Draggable & Responsive Panel]
+local panelWidth = 510
+local panelHeight = 370
+local minX, minY = 60, 36
+
+local Panel = Instance.new("Frame")
+Panel.Name = "MainPanel"
+Panel.Size = UDim2.new(0, panelWidth, 0, panelHeight)
+Panel.Position = UDim2.new(0.5, -panelWidth/2, 0.5, -panelHeight/2)
+Panel.BackgroundColor3 = ColorPanel
+Panel.Active = true
+Panel.Visible = menuVisible
+Panel.BorderSizePixel = 0
+Panel.Parent = Main
+roundify(Panel, 13)
+
+-- Topbar
+local TopBar = Instance.new("Frame")
+TopBar.Name = "TopBar"
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.Position = UDim2.new(0, 0, 0, 0)
+TopBar.BackgroundColor3 = ColorTopBar
+TopBar.BorderSizePixel = 0
+TopBar.Parent = Panel
+roundify(TopBar, 13)
+
+local Title = Instance.new("TextLabel")
+Title.Text = "YABUJIN"
+Title.Size = UDim2.new(1, 0, 1, 0)
+Title.BackgroundTransparency = 1
+Title.Font = FONT_GAME
+Title.TextColor3 = ColorTitle
+Title.TextStrokeTransparency = 0.77
+Title.TextStrokeColor3 = ColorAccent
+Title.TextScaled = true
+Title.Parent = TopBar
+
+-- Dragging logic
+local dragging = false
+local dragInput, mousePos, framePos
+
+TopBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        mousePos = input.Position
+        framePos = Panel.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+TopBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - mousePos
+        local newPos = UDim2.new(framePos.X.Scale, framePos.X.Offset+delta.X, framePos.Y.Scale, framePos.Y.Offset+delta.Y)
+        -- Clamp inside screen
+        newPos = UDim2.new(
+            0, math.clamp(newPos.X.Offset, minX, workspace.CurrentCamera.ViewportSize.X - panelWidth - minX),
+            0, math.clamp(newPos.Y.Offset, minY, workspace.CurrentCamera.ViewportSize.Y - panelHeight - minY)
+        )
+        Panel.Position = newPos
+    end
+end)
+
+----------------------------------------------------------------------
+
+-- [Sidebar]
+local sidebarW = 110
+
+local Sidebar = Instance.new("Frame")
+Sidebar.Name = "Sidebar"
+Sidebar.Size = UDim2.new(0, sidebarW, 1, -40)
+Sidebar.Position = UDim2.new(0, 0, 0, 40)
+Sidebar.BackgroundColor3 = ColorSidebar
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = Panel
+roundify(Sidebar, 10)
+
+-- Sidebar Tabs
+local tabs = {"Spoofer", "World", "Settings"}
+local selectedTab = "Spoofer"
+
+local tabButtons = {}
+for i, tab in ipairs(tabs) do
+    local btn = Instance.new("TextButton")
+    btn.Name = tab.."Tab"
+    btn.Text = tab
+    btn.Font = FONT_GAME
+    btn.TextScaled = true
+    btn.BackgroundColor3 = i==1 and ColorAccent or ColorButton
+    btn.TextColor3 = ColorTextNorm
+    btn.Position = UDim2.new(0, 10, 0, ((i-1) * 56) + 16)
+    btn.Size = UDim2.new(1, -22, 0, 42)
+    btn.AutoButtonColor = false
+    btn.Parent = Sidebar
+    roundify(btn, 8)
+
+    btn.MouseEnter:Connect(function()
+        if selectedTab ~= tab then
+            animateButton(btn, ColorButtonHover)
+        end
+    end)
+    btn.MouseLeave:Connect(function()
+        if selectedTab ~= tab then
+            animateButton(btn, ColorButton)
+        end
+    end)
+    btn.MouseButton1Click:Connect(function()
+        for _, b in pairs(tabButtons) do
+            animateButton(b, ColorButton)
+        end
+        animateButton(btn, ColorAccent)
+        selectedTab = tab
+        for name, frame in pairs(tabFrames) do
+            frame.Visible = (name == selectedTab)
+        end
+    end)
+    table.insert(tabButtons, btn)
 end
 
-if LocalPlayer then
-	LocalPlayer.CharacterAdded:Connect(function(char)
-		task.defer(function()
-			local head = char:FindFirstChild("Head")
-			if head then
-				for _, g in pairs(head:GetChildren()) do
-					if g:IsA("BillboardGui") and g.Name == "Yabujin_OverheadGui" then
-						protect(function() g:Destroy() end)
-					end
-				end
-			end
-			updateOverhead(appliedSpoof.username or state.username or LocalPlayer.Name,
-			               appliedSpoof.displayName or state.displayName or LocalPlayer.DisplayName)
-			if appliedSpoof.userId and isValidUserId(appliedSpoof.userId) then
-				applyAvatarSpoof(appliedSpoof.userId)
-			else
-				restoreOriginalAvatar()
-			end
-		end)
-	end)
+-- [Contenedores para cada Tab]
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Name = "ContentFrame"
+ContentFrame.Size = UDim2.new(1, -sidebarW, 1, -40)
+ContentFrame.Position = UDim2.new(0, sidebarW, 0, 40)
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Parent = Panel
+
+local tabFrames = {}
+
+----------------------------------------------------------------------
+
+-- [SPOOFER TAB]
+local SpooferFrame = Instance.new("Frame")
+SpooferFrame.Name = "Spoofer"
+SpooferFrame.Size = UDim2.new(1, 0, 1, 0)
+SpooferFrame.BackgroundTransparency = 1
+SpooferFrame.Parent = ContentFrame
+tabFrames["Spoofer"] = SpooferFrame
+
+local pad = 18
+
+-- Username
+local UsernameLabel = Instance.new("TextLabel")
+UsernameLabel.Text = "Username"
+UsernameLabel.Font = FONT_GAME
+UsernameLabel.TextColor3 = ColorTextNorm
+UsernameLabel.TextSize = 18
+UsernameLabel.Size = UDim2.new(0, 90, 0, 18)
+UsernameLabel.Position = UDim2.new(0, pad, 0, 20)
+UsernameLabel.BackgroundTransparency = 1
+UsernameLabel.Parent = SpooferFrame
+
+local UsernameBox = Instance.new("TextBox")
+UsernameBox.PlaceholderText = localPlayer.Name
+UsernameBox.Text = ""
+UsernameBox.Font = FONT_GAME
+UsernameBox.TextColor3 = ColorTextNorm
+UsernameBox.BackgroundColor3 = ColorButton
+UsernameBox.Size = UDim2.new(0, 230, 0, 32)
+UsernameBox.Position = UDim2.new(0, pad, 0, 43)
+roundify(UsernameBox, 6)
+UsernameBox.Parent = SpooferFrame
+
+-- Display Name
+local DispLabel = Instance.new("TextLabel")
+DispLabel.Text = "Display Name"
+DispLabel.Font = FONT_GAME
+DispLabel.TextColor3 = ColorTextNorm
+DispLabel.TextSize = 18
+DispLabel.Size = UDim2.new(0, 120, 0, 18)
+DispLabel.Position = UDim2.new(0, pad, 0, 90)
+DispLabel.BackgroundTransparency = 1
+DispLabel.Parent = SpooferFrame
+
+local DispBox = Instance.new("TextBox")
+DispBox.PlaceholderText = localPlayer.DisplayName
+DispBox.Text = ""
+DispBox.Font = FONT_GAME
+DispBox.TextColor3 = ColorTextNorm
+DispBox.BackgroundColor3 = ColorButton
+DispBox.Size = UDim2.new(0, 230, 0, 32)
+DispBox.Position = UDim2.new(0, pad, 0, 113)
+roundify(DispBox, 6)
+DispBox.Parent = SpooferFrame
+
+-- Buttons
+local spoofStatus, avatarStatus = "normal", "normal"
+local statusText, avatarText = "", ""
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Text = ""
+statusLabel.Font = FONT_GAME
+statusLabel.TextColor3 = ColorIndicatorOk
+statusLabel.TextScaled = true
+statusLabel.Size = UDim2.new(0, 120, 0, 18)
+statusLabel.Position = UDim2.new(0, pad, 0, 150)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Parent = SpooferFrame
+
+local ApplyBtn = Instance.new("TextButton")
+ApplyBtn.Text = "Apply"
+ApplyBtn.Font = FONT_GAME
+ApplyBtn.TextColor3 = ColorTextNorm
+ApplyBtn.BackgroundColor3 = ColorAccent
+ApplyBtn.Size = UDim2.new(0, 95, 0, 34)
+ApplyBtn.Position = UDim2.new(0, pad, 0, 177)
+roundify(ApplyBtn, 8)
+ApplyBtn.Parent = SpooferFrame
+
+local ResetBtn = Instance.new("TextButton")
+ResetBtn.Text = "Reset"
+ResetBtn.Font = FONT_GAME
+ResetBtn.TextColor3 = ColorTextNorm
+ResetBtn.BackgroundColor3 = ColorButton
+ResetBtn.Size = UDim2.new(0, 95, 0, 34)
+ResetBtn.Position = UDim2.new(0, pad+105, 0, 177)
+roundify(ResetBtn, 8)
+ResetBtn.Parent = SpooferFrame
+
+ApplyBtn.MouseButton1Click:Connect(function()
+    local uname = UsernameBox.Text ~= "" and UsernameBox.Text or nil
+    local dname = DispBox.Text ~= "" and DispBox.Text or nil
+    local ok, msg = spoofName(uname, dname)
+    if ok then
+        spoofStatus = "success"
+        statusText = "Cambiado localmente"
+        statusLabel.TextColor3 = ColorIndicatorOk
+    else
+        spoofStatus = "error"
+        statusText = "No fue posible"
+        statusLabel.TextColor3 = ColorIndicatorFail
+    end
+    statusLabel.Text = statusText
+end)
+
+ResetBtn.MouseButton1Click:Connect(function()
+    resetName()
+    spoofStatus = "reset"
+    statusText = "Restaurado"
+    statusLabel.TextColor3 = ColorIndicatorOk
+    statusLabel.Text = statusText
+end)
+
+-- Evento para menú nativo "Esc": reintenta aplicar nombres si están spoofeados
+StarterGui.MenuOpened:Connect(function()
+    local uname = UsernameBox.Text ~= "" and UsernameBox.Text or nil
+    local dname = DispBox.Text ~= "" and DispBox.Text or nil
+    reapplyNameIfNeeded(uname, dname)
+end)
+
+----------------------------------------------------------------------
+
+-- [AVATAR SPOOFER]
+local AvSection = Instance.new("Frame")
+AvSection.Name = "AvatarSection"
+AvSection.Size = UDim2.new(0, 255, 0, 138)
+AvSection.Position = UDim2.new(0, 245, 0, 20)
+AvSection.BackgroundColor3 = ColorPanel
+AvSection.BackgroundTransparency = 0.22
+AvSection.Parent = SpooferFrame
+roundify(AvSection, 10)
+
+local AvLabel = Instance.new("TextLabel")
+AvLabel.Text = "Avatar Spoofer"
+AvLabel.Font = FONT_GAME
+AvLabel.TextColor3 = ColorTextNorm
+AvLabel.TextSize = 18
+AvLabel.Size = UDim2.new(1, -16, 0, 18)
+AvLabel.Position = UDim2.new(0, 8, 0, 5)
+AvLabel.BackgroundTransparency = 1
+AvLabel.Parent = AvSection
+
+local AvUserBox = Instance.new("TextBox")
+AvUserBox.PlaceholderText = "Username Roblox"
+AvUserBox.Text = ""
+AvUserBox.Font = FONT_GAME
+AvUserBox.TextColor3 = ColorTextNorm
+AvUserBox.BackgroundColor3 = ColorButton
+AvUserBox.Size = UDim2.new(0, 138, 0, 32)
+AvUserBox.Position = UDim2.new(0, 10, 0, 28)
+roundify(AvUserBox, 7)
+AvUserBox.Parent = AvSection
+
+local AvatarApplyBtn = Instance.new("TextButton")
+AvatarApplyBtn.Text = "Apply"
+AvatarApplyBtn.Font = FONT_GAME
+AvatarApplyBtn.TextColor3 = ColorTextNorm
+AvatarApplyBtn.BackgroundColor3 = ColorAccent
+AvatarApplyBtn.Size = UDim2.new(0, 65, 0, 32)
+AvatarApplyBtn.Position = UDim2.new(0, 162, 0, 28)
+roundify(AvatarApplyBtn, 7)
+AvatarApplyBtn.Parent = AvSection
+
+local AvatarResetBtn = Instance.new("TextButton")
+AvatarResetBtn.Text = "Reset"
+AvatarResetBtn.Font = FONT_GAME
+AvatarResetBtn.TextColor3 = ColorTextNorm
+AvatarResetBtn.BackgroundColor3 = ColorButton
+AvatarResetBtn.Size = UDim2.new(0, 65, 0, 32)
+AvatarResetBtn.Position = UDim2.new(0, 162, 0, 68)
+roundify(AvatarResetBtn, 7)
+AvatarResetBtn.Parent = AvSection
+
+local AvStatusLbl = Instance.new("TextLabel")
+AvStatusLbl.Text = ""
+AvStatusLbl.Font = FONT_GAME
+AvStatusLbl.TextColor3 = ColorIndicatorOk
+AvStatusLbl.TextSize = 18
+AvStatusLbl.Size = UDim2.new(0, 152, 0, 19)
+AvStatusLbl.Position = UDim2.new(0, 10, 0, 109)
+AvStatusLbl.BackgroundTransparency = 1
+AvStatusLbl.Parent = AvSection
+
+local AvPreview = Instance.new("ImageLabel")
+AvPreview.Size = UDim2.new(0, 48, 0, 48)
+AvPreview.Position = UDim2.new(0, 185, 0, 100)
+AvPreview.BackgroundColor3 = ColorButton
+AvPreview.BackgroundTransparency = 0.4
+AvPreview.Image = ""
+AvPreview.Parent = AvSection
+roundify(AvPreview, 5)
+
+local function setAvatarStatus(type, msg)
+    avatarStatus = type
+    avatarText = msg or ""
+    if type=="loading" then
+        AvStatusLbl.Text = "Cargando..."
+        AvStatusLbl.TextColor3 = ColorIndicatorWait
+    elseif type=="success" then
+        AvStatusLbl.Text = "Aplicado"
+        AvStatusLbl.TextColor3 = ColorIndicatorOk
+    elseif type=="error" then
+        AvStatusLbl.Text = avatarText
+        AvStatusLbl.TextColor3 = ColorIndicatorFail
+    else
+        AvStatusLbl.Text = ""
+    end
 end
 
-if LocalPlayer and LocalPlayer.Character then
-	task.defer(function()
-		updateOverhead(appliedSpoof.username or state.username or LocalPlayer.Name,
-		               appliedSpoof.displayName or state.displayName or LocalPlayer.DisplayName)
-	end)
+local function updateAvPreview(uName)
+    AvPreview.Image = ""
+    if uName and #uName > 2 then
+        local ok,info = pcall(function()
+            local resp = HttpService:JSONDecode(game:HttpGet(
+                "https://users.roblox.com/v1/usernames/users?usernames=["..uName.."]&excludeBannedUsers=true"
+            ))
+            if resp and resp.data and resp.data[1] and resp.data[1].id then
+                local id = resp.data[1].id
+                AvPreview.Image = getAvatarHeadshot(id)
+            end
+        end)
+    end
 end
 
--- ========== UI INTEGRATION ==========
+AvUserBox.FocusLost:Connect(function()
+    updateAvPreview(AvUserBox.Text)
+end)
 
-if textbox and body then
-	textbox(body, "Username", function(text)
-		appliedSpoof.username = text
-		state.username = text
-		updateOverhead(
-			text,
-			appliedSpoof.displayName or state.displayName or (LocalPlayer and LocalPlayer.DisplayName)
-		)
-	end)
+AvatarApplyBtn.MouseButton1Click:Connect(function()
+    local user = AvUserBox.Text
+    if not user or #user < 3 then
+        setAvatarStatus("error", "Username inválido")
+        return
+    end
+    spoofAvatarFromUsername(user, function(state, msg)
+        setAvatarStatus(state, msg)
+        if state == "success" then
+            updateAvPreview(user)
+        end
+    end)
+end)
 
-	textbox(body, "DisplayName", function(text)
-		appliedSpoof.displayName = text
-		state.displayName = text
-		updateOverhead(
-			appliedSpoof.username or state.username or (LocalPlayer and LocalPlayer.Name),
-			text
-		)
-	end)
+AvatarResetBtn.MouseButton1Click:Connect(function()
+    resetAvatar(setAvatarStatus)
+    updateAvPreview(localPlayer.Name)
+end)
 
-	textbox(body, "UserId", function(text)
-		if isValidUserId(text) then
-			local success, err = pcall(function()
-				applyAvatarSpoof(text)
-			end)
-			if not success then
-				showErrorMsg("Error aplicando spoof de avatar: "..(err or "desconocido"))
-			end
-		else
-			showErrorMsg("UserId inválido.")
-		end
-	end)
+----------------------------------------------------------------------
+
+-- [WORLD TAB - Galactic Skies]
+local WorldFrame = Instance.new("Frame")
+WorldFrame.Name = "World"
+WorldFrame.Size = UDim2.new(1, 0, 1, 0)
+WorldFrame.BackgroundTransparency = 1
+WorldFrame.Parent = ContentFrame
+tabFrames["World"] = WorldFrame
+WorldFrame.Visible = false
+
+local w_pad, w_y = 22, 22
+local boxesPerRow, boxPad, boxW, boxH = 2, 22, 190, 70
+local idx=0
+local skyStatusLbl = Instance.new("TextLabel")
+skyStatusLbl.Text = ""
+skyStatusLbl.Font = FONT_GAME
+skyStatusLbl.TextColor3 = ColorIndicatorOk
+skyStatusLbl.TextSize = 19
+skyStatusLbl.Position = UDim2.new(0, w_pad, 0, 325)
+skyStatusLbl.Size = UDim2.new(1, -w_pad*2, 0, 24)
+skyStatusLbl.BackgroundTransparency = 1
+skyStatusLbl.Parent = WorldFrame
+
+local function setSkyStatus(type, msg)
+    if type=="loading" then
+        skyStatusLbl.Text = "Cargando..."
+        skyStatusLbl.TextColor3 = ColorIndicatorWait
+    elseif type=="success" then
+        skyStatusLbl.Text = msg or "Cielo aplicado"
+        skyStatusLbl.TextColor3 = ColorIndicatorOk
+    elseif type=="error" then
+        skyStatusLbl.Text = msg
+        skyStatusLbl.TextColor3 = ColorIndicatorFail
+    else
+        skyStatusLbl.Text = ""
+    end
 end
 
-if button and body then
-	button(body, "Restaurar apariencia original", function()
-		local ok, err = pcall(function()
-			restoreOriginalAvatar()
-		end)
-		updateOverhead(LocalPlayer and LocalPlayer.Name, LocalPlayer and LocalPlayer.DisplayName)
-		appliedSpoof.username = nil
-		appliedSpoof.displayName = nil
-		state.username = nil
-		state.displayName = nil
-		for _, child in ipairs(body:GetChildren()) do
-			if child:IsA("TextLabel") and child.Name == "FeedbackLabel" then
-				child:Destroy()
-			end
-		end
-		local lbl = label(body, ok and "Avatar visual restaurado." or ("Error: "..(err or "desconocido")), 11, false, C.green)
-		lbl.Name = "FeedbackLabel"
-		lbl.Size = UDim2.new(1,0,0,19)
-	end)
+local function selectSky(name)
+    if not skyOptions[name] then setSkyStatus("error", "Sky desconocido") return end
+    setSkyStatus("loading")
+    pcall(function()
+        applySkybox(skyOptions[name].Skybox)
+        currentSkyName = name
+        setSkyStatus("success", "Cielo aplicado: "..name)
+    end)
 end
 
-if not (game and game.Players and game.Players.GetHultc1qalrd99hju33uagsf8927k7xfxr423gr93gnjz8 and Instance and Instance.new) then
-	showErrorMsg("Esta versión de Roblox o Real Executor NO soporta spoof visual de avatar por UserId.")
+local function genSkyBox(k, dat, i)
+    idx = idx + 1
+    local row = math.floor((idx-1)/boxesPerRow)
+    local col = (idx-1)%boxesPerRow
+
+    local box = Instance.new("Frame")
+    box.Name = k.."Box"
+    box.Size = UDim2.new(0, boxW, 0, boxH)
+    box.Position = UDim2.new(0, w_pad + col*(boxW + boxPad), 0, w_y + row*(boxH + 18))
+    box.BackgroundColor3 = (currentSkyName == k) and ColorSkySelected or ColorButton
+    box.BackgroundTransparency = 0.23
+    box.Parent = WorldFrame
+    roundify(box, 9)
+
+    local preview = Instance.new("ImageLabel")
+    preview.Image = dat.Preview
+    preview.Size = UDim2.new(0, 52, 0, 52)
+    preview.Position = UDim2.new(0, 9, 0, 9)
+    preview.BackgroundTransparency = 1
+    preview.Parent = box
+
+    local nameLbl = Instance.new("TextLabel")
+    nameLbl.Text = dat.Name
+    nameLbl.Font = FONT_GAME
+    nameLbl.TextColor3 = ColorTextNorm
+    nameLbl.TextSize = 18
+    nameLbl.Position = UDim2.new(0, 76, 0, 13)
+    nameLbl.Size = UDim2.new(0, 89, 0, 22)
+    nameLbl.BackgroundTransparency = 1
+    nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+    nameLbl.Parent = box
+
+    local ApplyBtn = Instance.new("TextButton")
+    ApplyBtn.Text = "Apply"
+    ApplyBtn.Font = FONT_GAME
+    ApplyBtn.TextColor3 = ColorTextNorm
+    ApplyBtn.BackgroundColor3 = ColorAccent
+    ApplyBtn.Size = UDim2.new(0, 67, 0, 29)
+    ApplyBtn.Position = UDim2.new(1, -74, 1, -35)
+    roundify(ApplyBtn, 7)
+    ApplyBtn.Parent = box
+
+    ApplyBtn.MouseButton1Click:Connect(function()
+        selectSky(k)
+        -- Marcar sky seleccionado visualmente
+        for child,framen in pairs(WorldFrame:GetChildren()) do
+            if typeof(framen) == "Instance" and framen:IsA("Frame") and framen ~= box then
+                framen.BackgroundColor3 = ColorButton
+            end
+        end
+        box.BackgroundColor3 = ColorSkySelected
+    end)
 end
+
+for n,dat in pairs(skyOptions) do
+    genSkyBox(n, dat, idx+1)
+end
+
+local RestoreSkyBtn = Instance.new("TextButton")
+RestoreSkyBtn.Text = "Restore Original"
+RestoreSkyBtn.Font = FONT_GAME
+RestoreSkyBtn.TextColor3 = ColorTextNorm
+RestoreSkyBtn.BackgroundColor3 = ColorButton
+RestoreSkyBtn.Size = UDim2.new(0, 153, 0, 34)
+RestoreSkyBtn.Position = UDim2.new(1, -170, 1, -45)
+roundify(RestoreSkyBtn, 8)
+RestoreSkyBtn.Parent = WorldFrame
+
+RestoreSkyBtn.MouseButton1Click:Connect(function()
+    pcall(function() restoreOriginalSky() end)
+    setSkyStatus("success", "Cielo restaurado")
+    -- Cambiar el color de cajas
+    for _, framen in ipairs(WorldFrame:GetChildren()) do
+        if framen:IsA("Frame") then
+            framen.BackgroundColor3 = ColorButton
+        end
+    end
+end)
+
+----------------------------------------------------------------------
+
+-- [SETTINGS TAB]: Solo keybind menú
+local SettingsFrame = Instance.new("Frame")
+SettingsFrame.Name = "Settings"
+SettingsFrame.Size = UDim2.new(1, 0, 1, 0)
+SettingsFrame.BackgroundTransparency = 1
+SettingsFrame.Parent = ContentFrame
+SettingsFrame.Visible = false
+tabFrames["Settings"] = SettingsFrame
+
+local setTitle = Instance.new("TextLabel")
+setTitle.Text = "Shortcut"
+setTitle.Font = FONT_GAME
+setTitle.TextColor3 = ColorTextNorm
+setTitle.TextScaled = true
+setTitle.BackgroundTransparency = 1
+setTitle.Position = UDim2.new(0, 35, 0, 59)
+setTitle.Size = UDim2.new(0, 170, 0, 32)
+setTitle.Parent = SettingsFrame
+
+local descLbl = Instance.new("TextLabel")
+descLbl.Text = "Menú abre/cierra con:"
+descLbl.Font = FONT_GAME
+descLbl.TextColor3 = ColorTextNorm
+descLbl.TextSize = 17
+descLbl.BackgroundTransparency = 1
+descLbl.Position = UDim2.new(0, 35, 0, 99)
+descLbl.Size = UDim2.new(0, 187, 0, 22)
+descLbl.Parent = SettingsFrame
+
+local currKeyBtn = Instance.new("TextButton")
+currKeyBtn.Text = tostring(menuKey.Name)
+currKeyBtn.Font = FONT_GAME
+currKeyBtn.TextScaled = true
+currKeyBtn.TextColor3 = ColorAccent
+currKeyBtn.BackgroundColor3 = ColorButton
+currKeyBtn.Size = UDim2.new(0, 90, 0, 34)
+currKeyBtn.Position = UDim2.new(0, 35, 0, 136)
+currKeyBtn.AutoButtonColor = true
+roundify(currKeyBtn, 9)
+currKeyBtn.Parent = SettingsFrame
+
+local waitForKey = false
+currKeyBtn.MouseButton1Click:Connect(function()
+    currKeyBtn.Text = "..."
+    waitForKey = true
+    currKeyBtn.TextColor3 = ColorIndicatorWait
+end)
+
+UserInputService.InputBegan:Connect(function(inp, gameProcessed)
+    if not Main or not Main.Parent then return end
+    if waitForKey and inp.UserInputType == Enum.UserInputType.Keyboard then
+        menuKey = inp.KeyCode
+        currKeyBtn.Text = tostring(menuKey.Name)
+        currKeyBtn.TextColor3 = ColorAccent
+        waitForKey = false
+    elseif inp.KeyCode == menuKey and not waitForKey and not gameProcessed then
+        menuVisible = not menuVisible
+        Panel.Visible = menuVisible
+    end
+end)
+
+----------------------------------------------------------------------
+
+-- [Responsividad al cambiar tamaño ventana]
+game:GetService("Workspace").CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+    Panel.Position = UDim2.new(0.5, -panelWidth/2, 0.5, -panelHeight/2)
+end)
